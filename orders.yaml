@@ -1,0 +1,126 @@
+clients:
+  - name: Ron
+    payments:
+      - amount: 200000
+        payment_date: "20-03-2025"
+        mode: "online"
+        note: "Advance payment"
+      - amount: 245000
+        payment_date: "07-04-2025"
+        mode: "online"
+        note: "Advance payment"
+      - amount: 42000
+        payment_date: "12-04-2025"
+        mode: "online"
+        note: "Advance payment"
+  - name: Abhishek
+    payments:
+      - amount: 0
+        payment_date: "01-02-2025"
+        mode: "online"
+        note: "Dummy advance payment"
+  - name: Happy Feet School
+    payments:
+      - amount: 300000
+        payment_date: "22-04-2025"
+        mode: "cash"
+        note: "Advance payment for mini sign"
+  - name: Ryan
+    payments:
+      - amount: 0
+        payment_date: "11-05-2025"
+        mode: "cash"
+        note: "Dummy advance payment"
+
+orders:
+  - date: "04-04-2025"
+    client: Ron
+    flags: [printed, delivered]
+    items:
+      - description: "Horn"
+        quantity: 6
+        rate: 15000
+      - description: "Terminal Cap"
+        quantity: 6
+        rate: 10000
+      - description: "Sign - Speaker Stencil"
+        quantity: 1
+        rate: 12000
+      - description: "Small Angled Speaker"
+        quantity: 2
+        rate: 15000
+
+  - date: "26-03-2025"
+    client: Ron
+    flags: [printed, delivered]
+    items:
+      - description: "Mask"
+        quantity: 1
+        rate: 50000
+
+  - date: "08-04-2025"
+    client: Ron
+    flags: [awaiting_print]
+    items:
+      - description: "Large Cone Speaker"
+        quantity: 2
+        rate: 100000
+
+  - date: "08-04-2025"
+    client: Ron
+    flags: [printed, delivered]
+    items:
+      - description: "Small slanted speaker"
+        quantity: 2
+        rate: 15000
+      - description: "Large text sign"
+        quantity: 1
+        rate: 15000
+
+  - date: "01-02-2025"
+    client: Abhishek
+    flags: [awaiting_print]
+    items:
+      - description: "Australia light holder"
+        quantity: 1
+        rate: 10000
+      - description: "Coffee Holder"
+        quantity: 1
+        rate: 40000
+      - description: "Coffee Holder Outer"
+        quantity: 1
+        rate: 40000
+
+  - date: "22-04-2025"
+    client: Happy Feet School
+    flags: [awaiting_print]
+    items:
+      - description: "Mini Sign"
+        quantity: 1
+        rate: 300000
+
+  - date: "10-05-2025"
+    client: Ryan
+    flags: [awaiting_print]
+    items:
+      - description: "Small slanted speaker"
+        quantity: 2
+        rate: 15000
+      - description: "Pipe speaker"
+        quantity: 4
+        rate: 15000
+      - description: "Round speaker"
+        quantity: 2
+        rate: 20000
+      - description: "Bax for Round speaker"
+        quantity: 2
+        rate: 15000
+      - description: "Designed Face Plate"
+        quantity: 1
+        rate: 15000
+      - description: "STL"
+        quantity: 2
+        rate: 15000
+      - description: "Pussy Speaker"
+        quantity: 2
+        rate: 30000

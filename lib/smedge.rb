@@ -12,6 +12,7 @@ require_relative "smedge/order"
 require_relative "smedge/client"
 require_relative "smedge/orderitem"
 require_relative "smedge/payment"
+require_relative "smedge/utils/date_parse"
 
 # setup localization
 I18n.available_locales = %i[en en-IN]

@@ -21,7 +21,7 @@ module Smedge
     attr_accessor :order_id, :orderdate, :client, :orderitems, :payments, :status_flags
 
     def initialize(orderdate, client)
-      @orderdate = Date.parse(orderdate)
+      @orderdate = Smedge::Utils::DateParser.parse(orderdate)
       @client = client
       @orderitems = []
       @payments = []
@@ -33,8 +33,8 @@ module Smedge
         printed: false,
         delivered: false
       }
-    rescue ArgumentError
-      raise Smedge::Error, "Invalid date format: #{orderdate}"
+    rescue ArgumentError => e
+      raise Smedge::Error, "Error: #{e.message}"
     end
 
     def update_flag(flag, value: true)
@@ -59,7 +59,7 @@ module Smedge
       @payments << Payment.new(
         client: @client,
         amount: credit_used_amount.cents,
-        payment_date: Date.today.to_s,
+        payment_date: Date.today.strftime("%d-%m-%Y"),
         mode: "credit",
         note: "Auto-applied to client credit",
         order_id: @order_id
