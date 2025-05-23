@@ -1,7 +1,9 @@
 # frozen_string_literal: true
 
 require "pastel"
+require "tty-font"
 require_relative "currency_formatter"
+require_relative "../version"
 
 module Smedge
   module Utils
@@ -34,7 +36,28 @@ module Smedge
       end
 
       def print_divider
-        puts pastel.bright_yellow("\n**********")
+        print "\n"
+        80.times { print pastel.bright_yellow("*") }
+        print "\n"
+      end
+
+      def print_fancy_banner(app_name = "Smedge", width = 80)
+        pastel = Pastel.new
+        font = TTY::Font.new(:standard)
+
+        banner = font.write(app_name)
+        split_lines = banner.split("\n")
+
+        centered_lines = split_lines.map do |line|
+          padding = (width - line.length) / 2
+          " " * padding + line
+        end.join("\n")
+
+        # banner_lines = banner.lines.map { |line| line.rstrip.center(width) }.join("\n")
+        version_line = "Version #{Smedge::VERSION}".center(width)
+
+        puts pastel.cyan(centered_lines)
+        puts pastel.green(version_line)
       end
     end
   end

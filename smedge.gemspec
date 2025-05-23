@@ -35,6 +35,19 @@ Gem::Specification.new do |spec|
   # Uncomment to register a new dependency of your gem
   # spec.add_dependency "example-gem", "~> 1.0"
 
+  # Runtime dependencies
+  spec.add_dependency "tty-table", "~> 0.12.0"
+  spec.add_dependency "tty-font", "~> 0.5.0"
+  spec.add_dependency "money", "~> 6.19"
+  spec.add_dependency "bigdecimal", "~> 3.1", ">= 3.1.9"
+  spec.add_dependency "pastel", "~> 0.8.0"
+  spec.add_dependency "optparse", "~> 0.6.0"
+
+  # Development dependencies
+  spec.add_development_dependency "rake", "~> 13.0"
+  spec.add_development_dependency "rubocop", "~> 1.21"
+  spec.add_development_dependency "rspec", "~> 3.0"
+
   # For more information and examples about making a new gem, check out our
   # guide at: https://bundler.io/guides/creating_gem.html
 end

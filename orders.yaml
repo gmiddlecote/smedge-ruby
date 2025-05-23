@@ -13,6 +13,10 @@ clients:
         payment_date: "12-04-2025"
         mode: "online"
         note: "Advance payment"
+      - amount: 120000
+        payment_date: "15-05-2025"
+        mode: "online"
+        note: "Payment"
   - name: Abhishek
     payments:
       - amount: 0
@@ -27,10 +31,10 @@ clients:
         note: "Advance payment for mini sign"
   - name: Ryan
     payments:
-      - amount: 0
-        payment_date: "11-05-2025"
+      - amount: 100000
+        payment_date: "15-05-2025"
         mode: "cash"
-        note: "Dummy advance payment"
+        note: "Payment"
 
 orders:
   - date: "04-04-2025"
@@ -108,19 +112,36 @@ orders:
         rate: 15000
       - description: "Pipe speaker"
         quantity: 4
-        rate: 15000
-      - description: "Round speaker"
-        quantity: 2
         rate: 20000
-      - description: "Bax for Round speaker"
+      - description: "Round speaker"
+        quantity: 8
+        rate: 20000
+      - description: "Base for Round speaker"
         quantity: 2
-        rate: 15000
-      - description: "Designed Face Plate"
+        rate: 10000
+      - description: "Designer Face Plate"
         quantity: 1
-        rate: 15000
+        rate: 10000
       - description: "STL"
         quantity: 2
-        rate: 15000
-      - description: "Pussy Speaker"
+        rate: 5000
+      - description: "Round Speaker Spacer"
+        quantity: 6
+        rate: 10000
+      - description: "Beehive Speaker"
+        quantity: 2
+        rate: 50000
+
+  - date: "14-05-2025"
+    client: Ron
+    flags: [printed]
+    items:
+      - description: "SVG of knobs"
+        quantity: 2
+        rate: 5000
+      - description: "Parrot speaker"
         quantity: 2
         rate: 30000
+      - description: "Tissue Q box"
+        quantity: 1
+        rate: 50000

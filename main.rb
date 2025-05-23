@@ -45,6 +45,21 @@ data["clients"].each do |c|
   clients[c["name"]] = client
 end
 
+# heading
+print_divider
+print_fancy_banner
+print_divider
+
+# # Print Clients
+# Smedge::Payment.display_all_grouped_by_client(pastel: pastel)
+Smedge::Payment.display_all_grouped_by_month(pastel: pastel)
+# clients.each do | name, client |
+#   puts "\nClient: #{name}"
+#   puts "Total Credit: #{format_money_in_indian_style(client.available_credit)}"
+#   puts "Number of Payments: #{client.credits.size}"
+#   puts "Number of Orders: #{client.orders.size}" if client.respond_to?(:orders)
+# end
+
 # Process orders
 data["orders"].each do |order_data|
 client = clients[order_data["client"]]
@@ -59,7 +74,7 @@ client = clients[order_data["client"]]
 order_data["flags"]&.each { |flag| order.update_flag(flag.to_sym)}
 
 # Apply filtering if CLI flags are set
-next if options.any? && !order_data["flag"].any? { |f| options[f.to_sym]}
+next if options.any? && !order_data["flags"]&.any? { |f| options[f.to_sym]}
 
 print_divider
 
@@ -73,12 +88,3 @@ print_available_credit(client, "After Order")
 end
 
 print_divider
-
-# clients.each do |name, client|
-#   client.credits.each_with_index do |payment, index|
-#     payment.display(pastel: pastel, index: index + 1)
-#   end
-# end
-
-# Smedge::Payment.all()
-Smedge::Payment.display_all_grouped_by_client(pastel: pastel)

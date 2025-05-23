@@ -18,14 +18,18 @@ module Smedge
       end
 
       # Add Commas
-      def format_money_in_indian_style(money)
+      def format_money_in_indian_style(money, width: 10, pad_char: ' ')
         amount = money.cents / 100.0
         int, decimal = ("%.2f" % amount).split(".")
 
         int = int.reverse.gsub(/(\d{3})(?=\d)/, '\\1,').reverse
         int = int.gsub(/(\d+),(\d{2})$/, '\\1,\\2')
 
-        "₹#{int}.#{decimal}"
+        formatted_number = "#{int}.#{decimal}"
+        padded = "#{pad_char * (16 - formatted_number.length)}#{formatted_number}"
+
+        #"₹#{int}.#{decimal}"
+        "₹#{padded}"
       end
     end
   end
