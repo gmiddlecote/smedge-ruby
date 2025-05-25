@@ -152,7 +152,7 @@ module Smedge
 
       grand_total = Money.new(0)
 
-      payments_by_month.sort.each do |month_year, payments|
+      payments_by_month.sort_by { |month_year, _| Date.strptime(month_year, "%B %Y") }.each do |month_year, payments|
         puts pastel&.cyan("\n#{month_year}") || "\n#{month_year}"
 
         headers = ["#", "Client", "Amount", "Date", "Mode", "Note"]

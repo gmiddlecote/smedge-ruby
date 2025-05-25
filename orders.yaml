@@ -131,6 +131,9 @@ orders:
       - description: "Beehive Speaker"
         quantity: 2
         rate: 50000
+      - description: "Aquaponics Tower"
+        quantity: 1
+        rate: 100000
 
   - date: "14-05-2025"
     client: Ron
