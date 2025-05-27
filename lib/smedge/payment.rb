@@ -12,7 +12,7 @@ module Smedge
 
     @@all = []
 
-    def initialize(client:, amount: 0.0, payment_date:, mode:, note: "", order_id: nil)
+    def initialize(client:, payment_date:, mode:, amount: 0.0, note: "", order_id: nil)
       @client = client
       @amount = Money.new(amount)
       begin
@@ -31,7 +31,7 @@ module Smedge
       order_id.nil?
     end
 
-    def display(pastel:nil, index: nil)
+    def display(pastel: nil, index: nil)
       heading = index ? "Payment #{index}: " : "Payment:"
       # if @amount > Money.new(0, "INR")
       puts pastel&.green(heading) || heading
@@ -153,7 +153,7 @@ module Smedge
       grand_total = Money.new(0)
 
       payments_by_month.sort_by { |month_year, _| Date.strptime(month_year, "%B %Y") }.each do |month_year, payments|
-        puts pastel&.cyan("\n#{month_year}") || "\n#{month_year}"
+        puts pastel&.on_bright_red("\n#{month_year}") || "\n#{month_year}"
 
         headers = ["#", "Client", "Amount", "Date", "Mode", "Note"]
         rows = []
@@ -174,13 +174,12 @@ module Smedge
         table = TTY::Table.new(headers, rows)
         puts table.render(:unicode, padding: [0, 1])
 
+        puts pastel&.bright_blue("Payments: #{payments.size}") || "Payments: #{payments.size}"
         puts pastel&.yellow("Subtotal: #{format_money_in_indian_style(month_total)}") || "Subtotal: #{format_money_in_indian_style(month_total)}"
         grand_total += month_total
       end
 
       puts pastel&.magenta("\nGrand Total: #{format_money_in_indian_style(grand_total)}") || "\nGrand Total: #{format_money_in_indian_style(grand_total)}"
     end
-
-
   end
 end

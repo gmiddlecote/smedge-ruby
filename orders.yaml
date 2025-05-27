@@ -35,6 +35,10 @@ clients:
         payment_date: "15-05-2025"
         mode: "cash"
         note: "Payment"
+      - amount: 100000
+        payment_date: "25-05-2025"
+        mode: "cash"
+        note: "Payment"
 
 orders:
   - date: "04-04-2025"
@@ -130,7 +134,7 @@ orders:
         rate: 10000
       - description: "Beehive Speaker"
         quantity: 2
-        rate: 50000
+        rate: 25000
       - description: "Aquaponics Tower"
         quantity: 1
         rate: 100000
@@ -148,3 +152,14 @@ orders:
       - description: "Tissue Q box"
         quantity: 1
         rate: 50000
+  - date: "27-05-2025"
+    client: Ron
+    flags: [printed]
+    items:
+      - description: "Convex 148/123 washer"
+        quantity: 4
+        rate: 10000
+      - description: "148/136 washer"
+        quantity: 4
+        rate: 7500
+
