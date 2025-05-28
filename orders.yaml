@@ -161,5 +161,4 @@ orders:
         rate: 10000
       - description: "148/136 washer"
         quantity: 4
-        rate: 7500
-
+        rate: 10000
