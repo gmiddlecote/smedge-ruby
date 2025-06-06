@@ -3,13 +3,17 @@
 require "bundler/setup"
 Bundler.require
 
-require_relative "smedge/utils/currency_formatter"
 require_relative "smedge/version"
 require_relative "smedge/order"
 require_relative "smedge/client"
 require_relative "smedge/orderitem"
-require_relative "smedge/payment"
+require_relative "smedge/transaction"
+require_relative "smedge/expense"
+require_relative "smedge/income"
+require_relative "smedge/utils/currency_formatter"
 require_relative "smedge/utils/date_parse"
+require_relative "smedge/utils/display_helper"
+require_relative "smedge/utils/load_data"
 
 # setup localization
 I18n.available_locales = %i[en en-IN]

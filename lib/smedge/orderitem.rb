@@ -6,10 +6,15 @@ module Smedge
     def initialize(item, quantity)
       @item = item
       @quantity = quantity
+      @rate = Smedge::Utils::CurrencyFormatter.new_money(0)
     end
 
     def setrate(rate)
       @rate = rate
+    end
+
+    def total
+      Smedge::Utils::CurrencyFormatter.new_money(@quantity * @rate)
     end
 
     def displayorder

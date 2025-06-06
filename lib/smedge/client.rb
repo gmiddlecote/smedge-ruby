@@ -3,15 +3,21 @@
 module Smedge
   # Client class
   class Client
-    attr_accessor :name, :credits
+    attr_accessor :name, :email, :credits, :debits
 
-    def initialize(name)
+    def initialize(name, email = nil)
       @name = name
+      @email = email
       @credits = [] # Array of Payment objects with no order_id
+      @debits = []
     end
 
-    def add_credit(payment)
-      @credits << payment
+    def add_credit(income)
+      @credits << income
+    end
+
+    def add_debit(expense)
+      @debits << expense
     end
 
     def available_credit

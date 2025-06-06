@@ -6,9 +6,8 @@ require "money"
 require "pastel"
 
 module Smedge
-  # Order Class
+  # order class
   class Order
-    include Smedge::Utils::CurrencyFormatter
 
     # Class-level accessor for the class instance variable
     class << self
@@ -18,18 +17,20 @@ module Smedge
     # Initialize class instance variable
     @daily_order_count = Hash.new(0)
 
-    attr_accessor :order_id, :orderdate, :client, :orderitems, :payments, :status_flags
+    attr_accessor :order_id, :date, :client, :items, :income, :status_flags, :discount
 
-    def initialize(orderdate, client)
-      @orderdate = Smedge::Utils::DateParser.parse(orderdate)
+    def initialize(date, client, discount = 0)
+      @date = Smedge::Utils::DateParser.parse(date)
       @client = client
-      @orderitems = []
-      @payments = []
-      generate_order_id
-      @status_flage = {
+      @discount = Smedge::Utils::CurrencyFormatter.new_money(discount || 0)
+      @items = []
+      @income = []
+      self.generate_order_id
+      @status_flags = {
         awaiting_design: false,
         awaiting_material: false,
         awaiting_print: false,
+        printing: false,
         printed: false,
         delivered: false
       }
@@ -38,72 +39,90 @@ module Smedge
     end
 
     def update_flag(flag, value: true)
-      raise Smedge::Error, "Invalid status flag: #{flag}" unless @status_flage.key?(flag.to_sym)
+      raise Smedge::Error, "Invalid status flag: #{flag}" unless @status_flags.key?(flag.to_sym)
 
-      @status_flage[flag.to_sym] = value
+      @status_flags[flag.to_sym] = value
     end
 
     def display_flags
-      @status_flage.map { |k, v| "#{k}: #{v ? "✔" : "✖"}" }.join(", ")
+      @status_flags.map { |k, v| "#{k}: #{v ? "✔" : "✖"}" }.join(", ")
     end
 
-    def add_payment(payment)
-      raise Smedge::Error, "Payment order ID mismatch" if payment.order_id && payment.order_id != @order_id
+    def add_payment(income)
+      raise Smedge::Error, "Receipt order ID mismatch" if income.order_id && income.order_id != @order_id
 
-      @payment << payment
+      @income << income
     end
 
     def apply_client_credit
-      total = Money.new(@orderitems.sum { |i| i.quantity * i.rate })
+      total = Smedge::Utils::CurrencyFormatter.new_money(@items.sum { |i| i.quantity * i.rate })
       credit_used_amount = client.use_credit(total)
-      @payments << Payment.new(
+      @income << Income.new(
         client: @client,
         amount: credit_used_amount.cents,
-        payment_date: Date.today.strftime("%d-%m-%Y"),
+        date: Date.today.strftime("%d-%m-%Y"),
         mode: "credit",
         note: "Auto-applied to client credit",
         order_id: @order_id
       )
     end
 
-    def total_paid
-      @payments.sum(&:amount)
+    def total_received
+      @income.sum(&:amount)
+    end
+
+    def total_amount_before_discount
+      @items.map(&:total).reduce(Smedge::Utils::CurrencyFormatter.new_money(0), :+)
+    end
+
+    def total_amount_after_discount
+      total_amount_before_discount - @discount
     end
 
     def balance_due
-      total = Money.new(@orderitems.sum { |i| i.quantity * i.rate })
-      total - total_paid
+      total = Smedge::Utils::CurrencyFormatter.new_money(@items.sum { |i| i.quantity * i.rate })
+      total - total_received - @discount
     end
 
-    def additem(item)
-      @orderitems << item
+    def add_item(item)
+      @items << item
     end
 
     def display_order
       pastel = Pastel.new
-      puts pastel.bright_yellow("\nOrder: #{@order_id} Date: #{@orderdate.strftime("%d-%b-%Y")} Client: #{client.name}\n")
-      return puts "No order items" if @orderitems.empty?
+      print pastel.white("\nOrder: ")
+      print pastel.on_blue("#{@order_id} ")
+      print pastel.white("Date: ")
+      print pastel.on_blue("#{@date.strftime("%d-%b-%Y")} ")
+      print pastel.white("Client: ")
+      print pastel.on_blue("#{client.name}")
+      print "\n\n"
+      return puts "No order items" if @items.empty?
 
-      rows = build_order_rows
+      rows = self.build_order_rows
 
       # Calculate grand total
-      grand_total = @orderitems.sum { |item| item.quantity * item.rate }
+      grand_total = @items.sum { |item| item.quantity * item.rate }
 
       # Add seperator and total row
       rows << :separator
-      rows << ["Grand Total", "", "", pastel.bold(format_money_in_indian_style(Money.new(grand_total)))]
+      rows << ["", "", "Grand Total", pastel.white(format_money_in_indian_style(Money.new(grand_total)))]
+      unless @discount.zero?
+        rows << ["", "", pastel.bright_yellow("Discount"), pastel.bright_yellow(format_money_in_indian_style(@discount))]
+        rows << ["", "", pastel.white("Net Total"), pastel.white(format_money_in_indian_style(total_amount_after_discount))]
+      end
       puts render_table(rows)
     end
 
     private
 
     def build_order_rows
-      @orderitems.map do |item|
+      @items.map do |item|
         [
           item.item,
           item.quantity,
-          format_money_in_indian_style(Money.new(item.rate)),
-          format_money_in_indian_style(Money.new(item.quantity * item.rate))
+          format_money_in_indian_style(item.rate),
+          format_money_in_indian_style(item.quantity * item.rate)
         ]
       end
     end
@@ -117,14 +136,14 @@ module Smedge
         pastel.bold.blue("Rate"),
         pastel.bold.blue("Subtotal")
       ]
-      table = TTY::Table.new(header, rows)
-      puts table.render(:unicode, padding: [0, 2, 0, 2], alignments: %i[left right right right])
+      table = TTY::Table.new(header, [:separator] + rows)
+      table.render(:unicode, padding: [0, 2, 0, 2], alignments: %i[left right right right])
     end
 
     public
 
     def generate_order_id
-      key = orderdate.strftime("%d%m%Y")
+      key = date.strftime("%d%m%Y")
       self.class.daily_order_count[key] += 1
       serial = format("%03d", self.class.daily_order_count[key])
       @order_id = "ORD-#{key}-#{serial}"

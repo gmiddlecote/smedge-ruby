@@ -1,48 +1,103 @@
 clients:
   - name: Ron
-    payments:
-      - amount: 200000
-        payment_date: "20-03-2025"
-        mode: "online"
-        note: "Advance payment"
-      - amount: 245000
-        payment_date: "07-04-2025"
-        mode: "online"
-        note: "Advance payment"
-      - amount: 42000
-        payment_date: "12-04-2025"
-        mode: "online"
-        note: "Advance payment"
-      - amount: 120000
-        payment_date: "15-05-2025"
-        mode: "online"
-        note: "Payment"
-  - name: Abhishek
-    payments:
-      - amount: 0
-        payment_date: "01-02-2025"
-        mode: "online"
-        note: "Dummy advance payment"
-  - name: Happy Feet School
-    payments:
-      - amount: 300000
-        payment_date: "22-04-2025"
-        mode: "cash"
-        note: "Advance payment for mini sign"
+    email: ron@example.com
+  - name: Abhijeet Bhatia
   - name: Ryan
-    payments:
-      - amount: 100000
-        payment_date: "15-05-2025"
-        mode: "cash"
-        note: "Payment"
-      - amount: 100000
-        payment_date: "25-05-2025"
-        mode: "cash"
-        note: "Payment"
+  - name: Happy Feet School
+  - name: Petrol Pump
+  - name: Themba
+  - name: Amazon
+
+transactions:
+  - client: Ron
+    type: income
+    amount: 200000
+    date: "20-03-2025"
+    mode: "online"
+    note: "Advance payment"
+  - client: Ron
+    type: income
+    amount: 245000
+    date: "07-04-2025"
+    mode: "online"
+    note: "Advance payment"
+  - client: Ron
+    type: income
+    amount: 42000
+    date: "12-04-2025"
+    mode: "online"
+    note: "Advance payment"
+  - client: Ron
+    type: income
+    amount: 120000
+    date: "15-05-2025"
+    mode: "online"
+    note: "Payment"
+  - client: Ron
+    type: income
+    amount: 50000
+    date: "28-05-2025"
+    mode: "cash"
+    note: "Payment"
+  - client: Ron
+    type: expense
+    amount: 50000
+    date: "28-05-2025"
+    mode: "Assistance"
+    note: "Install of Happy Feet Board"
+  - client: Happy Feet School
+    type: income
+    amount: 300000
+    date: "22-04-2025"
+    mode: "cash"
+    note: "Advance payment for mini sign"
+  - client: Ryan
+    type: income
+    amount: 100000
+    date: "15-05-2025"
+    mode: "cash"
+    note: "Payment"
+  - client: Amazon
+    type: expense
+    amount: 140000
+    date: "20-05-2025"
+    mode: "cash"
+    note: "2 x white filament"
+  - client: Ryan
+    type: income
+    amount: 100000
+    date: "25-05-2025"
+    mode: "cash"
+    note: "Payment"
+  - client: Petrol Pump
+    type: expense
+    amount: 50000
+    date: "25-05-2025"
+    mode: "cash"
+    note: "Payment"
+  - client: Pharmacy
+    type: expense
+    amount: 25000
+    date: "03-06-2025"
+    mode: "cash"
+    note: "Payment"
+  - client: Petrol Pump
+    type: expense
+    amount: 30000
+    date: "03-06-2025"
+    mode: "cash"
+    note: "Payment"
+  - client: Abhijeet Bhatia
+    type: income
+    amount: 100000
+    date: "06-06-2025"
+    mode: "cash"
+    note: "Payment"
 
 orders:
   - date: "04-04-2025"
     client: Ron
+    discount: 0
     flags: [printed, delivered]
     items:
       - description: "Horn"
@@ -60,6 +115,7 @@ orders:
 
   - date: "26-03-2025"
     client: Ron
+    discount: 0
     flags: [printed, delivered]
     items:
       - description: "Mask"
@@ -68,6 +124,7 @@ orders:
 
   - date: "08-04-2025"
     client: Ron
+    discount: 0
     flags: [awaiting_print]
     items:
       - description: "Large Cone Speaker"
@@ -76,6 +133,7 @@ orders:
 
   - date: "08-04-2025"
     client: Ron
+    discount: 0
     flags: [printed, delivered]
     items:
       - description: "Small slanted speaker"
@@ -86,21 +144,20 @@ orders:
         rate: 15000
 
   - date: "01-02-2025"
-    client: Abhishek
-    flags: [awaiting_print]
+    client: Abhijeet Bhatia
+    discount: 10000
+    flags: [printed]
     items:
       - description: "Australia light holder"
         quantity: 1
         rate: 10000
       - description: "Coffee Holder"
-        quantity: 1
-        rate: 40000
-      - description: "Coffee Holder Outer"
-        quantity: 1
-        rate: 40000
+        quantity: 2
+        rate: 50000
 
   - date: "22-04-2025"
     client: Happy Feet School
+    discount: 0
     flags: [awaiting_print]
     items:
       - description: "Mini Sign"
@@ -109,6 +166,7 @@ orders:
 
   - date: "10-05-2025"
     client: Ryan
+    discount: 50000
     flags: [awaiting_print]
     items:
       - description: "Small slanted speaker"
@@ -134,14 +192,15 @@ orders:
         rate: 10000
       - description: "Beehive Speaker"
         quantity: 2
-        rate: 25000
+        rate: 50000
       - description: "Aquaponics Tower"
         quantity: 1
         rate: 100000
 
   - date: "14-05-2025"
     client: Ron
-    flags: [printed]
+    discount: 0
+    flags: [delivered]
     items:
       - description: "SVG of knobs"
         quantity: 2
@@ -152,9 +211,11 @@ orders:
       - description: "Tissue Q box"
         quantity: 1
         rate: 50000
+
   - date: "27-05-2025"
     client: Ron
-    flags: [printed]
+    discount: 30000
+    flags: [delivered]
     items:
       - description: "Convex 148/123 washer"
         quantity: 4
@@ -162,3 +223,23 @@ orders:
       - description: "148/136 washer"
         quantity: 4
         rate: 10000
+
+  - date: "01-06-2025"
+    client: Themba
+    discount: 0
+    flags: [printed]
+    items:
+      - description: "Sewing Machine Bobins"
+        quantity: 15
+        rate: 1000
+  - date: "03-06-2025"
+    client: Ron
+    discount: 0
+    flags: [printing]
+    items:
+      - description: "1 inch cube"
+        quantity: 4
+        rate: 2500
+      - description: "Flat for Question"
+        quantity: 1
+        rate: 5000
