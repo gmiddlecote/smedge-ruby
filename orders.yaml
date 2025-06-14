@@ -93,6 +93,18 @@ transactions:
     date: "06-06-2025"
     mode: "cash"
     note: "Payment"
+  - client: "Ron"
+    type: income
+    amount: 75000
+    date: "10-06-2025"
+    mode: "cash"
+    note: "Payment"
+  - client: "Themba"
+    type: expense
+    amount: 70000
+    date: "10-06-2025"
+    mode: "cash"
+    note: "Repayment for filament"
 
 orders:
   - date: "04-04-2025"
@@ -192,7 +204,7 @@ orders:
         rate: 10000
       - description: "Beehive Speaker"
         quantity: 2
-        rate: 50000
+        rate: 100000
       - description: "Aquaponics Tower"
         quantity: 1
         rate: 100000
@@ -232,6 +244,7 @@ orders:
       - description: "Sewing Machine Bobins"
         quantity: 15
         rate: 1000
+
   - date: "03-06-2025"
     client: Ron
     discount: 0
@@ -243,3 +256,12 @@ orders:
       - description: "Flat for Question"
         quantity: 1
         rate: 5000
+
+  - date: "09-06-2025"
+    client: Ron
+    discount: 0
+    flags: [printing]
+    items:
+      - description: "Speaker cover with wire cover"
+        quantity: 4
+        rate: 15000
