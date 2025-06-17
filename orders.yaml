@@ -7,6 +7,7 @@ clients:
   - name: Petrol Pump
   - name: Themba
   - name: Amazon
+  - name: Mary Ann
 
 transactions:
   - client: Ron
@@ -34,14 +35,8 @@ transactions:
     mode: "online"
     note: "Payment"
   - client: Ron
-    type: income
-    amount: 50000
-    date: "28-05-2025"
-    mode: "cash"
-    note: "Payment"
-  - client: Ron
     type: expense
-    amount: 50000
+    amount: 30000
     date: "28-05-2025"
     mode: "Assistance"
     note: "Install of Happy Feet Board"
@@ -75,6 +70,12 @@ transactions:
     date: "25-05-2025"
     mode: "cash"
     note: "Payment"
+  - client: "Ron"
+    type: income
+    amount: 80000
+    date: "28-05-2025"
+    mode: "Cash"
+    note: "Payment ORD-27052025-001"
   - client: Pharmacy
     type: expense
     amount: 25000
@@ -105,6 +106,24 @@ transactions:
     date: "10-06-2025"
     mode: "cash"
     note: "Repayment for filament"
+  - client: "Petrol Pump"
+    type: expense
+    amount: 50000
+    date: "15-06-2025"
+    mode: "cash"
+    note: "Fuel for bike"
+  - client: "Ryan"
+    type: income
+    amount: 200000
+    date: "15-06-2025"
+    mode: "online"
+    note: "Payment"
+  - client: "Mary Ann"
+    type: expense
+    amount: 100000
+    date: "17-06-2025"
+    mode: "online"
+    note: "Dora's birthday"
 
 orders:
   - date: "04-04-2025"
@@ -226,7 +245,7 @@ orders:
 
   - date: "27-05-2025"
     client: Ron
-    discount: 30000
+    discount: 0
     flags: [delivered]
     items:
       - description: "Convex 148/123 washer"
@@ -265,3 +284,27 @@ orders:
       - description: "Speaker cover with wire cover"
         quantity: 4
         rate: 15000
+
+  - date: "16-06-2025"
+    client: Ryan
+    discount: 0
+    flags: [printing]
+    items:
+      - description: "Glass Speaker - Speaker ring"
+        quantity: 1
+        rate: 10000
+      - description: "Glass Speaker - Volume knob plate"
+        quantity: 1
+        rate: 10000
+      - description: "Glass Speaker - Tweeter Cone"
+        quantity: 2
+        rate: 15000
+      - description: "Glass Speaker - Corner cover"
+        quantity: 8
+        rate: 3000
+      - description: "Glass Speaker - Small Speaker Cover"
+        quantity: 2
+        rate: 10000
+      - description: "Glass Speaker - Rear speaker strip"
+        quantity: 2
+        rate: 5000
