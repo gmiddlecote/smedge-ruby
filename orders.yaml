@@ -10,120 +10,130 @@ clients:
   - name: Mary Ann
 
 transactions:
+  # March 2025
   - client: Ron
     type: income
-    amount: 200000
+    amount: 2000_00
     date: "20-03-2025"
     mode: "online"
     note: "Advance payment"
+  # April 2025
   - client: Ron
     type: income
-    amount: 245000
+    amount: 2450_00
     date: "07-04-2025"
     mode: "online"
     note: "Advance payment"
   - client: Ron
     type: income
-    amount: 42000
+    amount: 420_00
     date: "12-04-2025"
     mode: "online"
     note: "Advance payment"
+  # May 2025
   - client: Ron
     type: income
-    amount: 120000
+    amount: 1200_00
     date: "15-05-2025"
     mode: "online"
     note: "Payment"
   - client: Ron
     type: expense
-    amount: 30000
+    amount: 300_00
     date: "28-05-2025"
     mode: "Assistance"
     note: "Install of Happy Feet Board"
   - client: Happy Feet School
     type: income
-    amount: 300000
+    amount: 3000_00
     date: "22-04-2025"
     mode: "cash"
     note: "Advance payment for mini sign"
   - client: Ryan
     type: income
-    amount: 100000
+    amount: 1000_00
     date: "15-05-2025"
     mode: "cash"
     note: "Payment"
   - client: Amazon
     type: expense
-    amount: 140000
+    amount: 1400_00
     date: "20-05-2025"
     mode: "cash"
     note: "2 x white filament"
   - client: Ryan
     type: income
-    amount: 100000
+    amount: 1000_00
     date: "25-05-2025"
     mode: "cash"
     note: "Payment"
   - client: Petrol Pump
     type: expense
-    amount: 50000
+    amount: 500_00
     date: "25-05-2025"
     mode: "cash"
     note: "Payment"
   - client: "Ron"
     type: income
-    amount: 80000
+    amount: 800_00
     date: "28-05-2025"
     mode: "Cash"
-    note: "Payment ORD-27052025-001"
+    note: "ORD-27052025-001"
+  # June 2025
   - client: Pharmacy
     type: expense
-    amount: 25000
+    amount: 250_00
     date: "03-06-2025"
     mode: "cash"
     note: "Payment"
   - client: Petrol Pump
     type: expense
-    amount: 30000
+    amount: 300_00
     date: "03-06-2025"
     mode: "cash"
     note: "Payment"
   - client: Abhijeet Bhatia
     type: income
-    amount: 100000
+    amount: 1000_00
     date: "06-06-2025"
     mode: "cash"
-    note: "Payment"
+    note: "ORD-01022025-001"
   - client: "Ron"
     type: income
-    amount: 75000
+    amount: 750_00
     date: "10-06-2025"
     mode: "cash"
     note: "Payment"
   - client: "Themba"
     type: expense
-    amount: 70000
+    amount: 700_00
     date: "10-06-2025"
     mode: "cash"
     note: "Repayment for filament"
   - client: "Petrol Pump"
     type: expense
-    amount: 50000
+    amount: 500_00
     date: "15-06-2025"
     mode: "cash"
     note: "Fuel for bike"
   - client: "Ryan"
     type: income
-    amount: 200000
+    amount: 2000_00
     date: "15-06-2025"
     mode: "online"
     note: "Payment"
   - client: "Mary Ann"
     type: expense
-    amount: 100000
+    amount: 1000_00
     date: "17-06-2025"
     mode: "online"
     note: "Dora's birthday"
+  - client: Abhijeet Bhatia
+    type: income
+    amount: 210_00
+    date: "22-06-2025"
+    mode: "cash"
+    note: "ORD-19062025-001"
 
 orders:
   - date: "04-04-2025"
@@ -176,15 +186,15 @@ orders:
 
   - date: "01-02-2025"
     client: Abhijeet Bhatia
-    discount: 10000
+    discount: 100_00
     flags: [printed]
     items:
       - description: "Australia light holder"
         quantity: 1
-        rate: 10000
+        rate: 100_00
       - description: "Coffee Holder"
         quantity: 2
-        rate: 50000
+        rate: 500_00
 
   - date: "22-04-2025"
     client: Happy Feet School
@@ -308,3 +318,12 @@ orders:
       - description: "Glass Speaker - Rear speaker strip"
         quantity: 2
         rate: 5000
+
+  - date: "19-06-2025"
+    client: Abhijeet Bhatia
+    discount: 0
+    flags: [printed]
+    items:
+      - description: "Australia Light Holder"
+        quantity: 7
+        rate: 30_00

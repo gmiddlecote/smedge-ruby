@@ -55,16 +55,30 @@ module Smedge
     end
 
     def apply_client_credit
-      total = Smedge::Utils::CurrencyFormatter.new_money(@items.sum { |i| i.quantity * i.rate })
-      credit_used_amount = client.use_credit(total)
-      @income << Income.new(
-        client: @client,
-        amount: credit_used_amount.cents,
-        date: Date.today.strftime("%d-%m-%Y"),
-        mode: "credit",
-        note: "Auto-applied to client credit",
-        order_id: @order_id
-      )
+      # total = Smedge::Utils::CurrencyFormatter.new_money(@items.sum { |i| i.quantity * i.rate })
+      # credit_used_amount = client.use_credit(total)
+      # @income << Income.new(
+      #   client: @client,
+      #   amount: credit_used_amount.cents,
+      #   date: Date.today.strftime("%d-%m-%Y"),
+      #   mode: "credit",
+      #   note: "Auto-applied to client credit",
+      #   order_id: @order_id
+      # )
+      amount_to_cover = balance_due
+        return if amount_to_cover <= 0
+
+        credit_used_amount = client.use_credit(amount_to_cover)
+        return if credit_used_amount.cents <= 0
+
+        @income << Income.new(
+          client: @client,
+          amount: credit_used_amount.cents,
+          date: Date.today.strftime("%d-%m-%Y"),
+          mode: "credit",
+          note: "Auto-applied to client credit",
+          order_id: @order_id
+        )
     end
 
     def total_received
@@ -80,8 +94,9 @@ module Smedge
     end
 
     def balance_due
-      total = Smedge::Utils::CurrencyFormatter.new_money(@items.sum { |i| i.quantity * i.rate })
-      total - total_received - @discount
+      # total = Smedge::Utils::CurrencyFormatter.new_money(@items.sum { |i| i.quantity * i.rate })
+      # total - total_received - @discount
+      total_amount_after_discount - total_received
     end
 
     def add_item(item)
