@@ -19,12 +19,9 @@ def main
   options = {}
   OptionParser.new do |opts|
     opts.banner = "Usage: main.rb [options]"
-    opts.on("--awaiting-design", "Filter: awaiting design") { options[:awaiting_design] = true }
-    opts.on("--awaiting-material", "Filter: awaiting material") { options[:awaiting_material] = true }
-    opts.on("--awaiting-print", "Filter: awaiting print") { options[:awaiting_print] = true }
-    opts.on("--printing", "Filter: printing") { options[:printing] = true }
-    opts.on("--printed", "Filter: printed") { options[:printed] = true }
-    opts.on("--delivered", "Filter: delivered") { options[:delivered] = true }
+    opts.on("--client-name NAME", "Filtered by client name") do |name|
+      options[:client_name] = name
+    end
   end.parse!
 
   # Load File
@@ -40,13 +37,19 @@ def main
   Smedge::Utils::DisplayHelper.print_divider
 
   # Print Receipts from Clients
-  Smedge::Transaction.display_income_and_expense_by_month(pastel: pastel)
+  puts options[:client_name]
+  Smedge::Transaction.display_income_and_expense_by_month(pastel: pastel, client_name: options[:client_name])
 
-  # Process orders
+  # Print Orders from Clients
   data["orders"].each do |order_data|
     client = clients[order_data["client"]]
+
     if client.nil?
       warn "No client found #{order_data["client"]}"
+      next
+    end
+
+    if options[:client_name] && order_data["client"] != options[:client_name]
       next
     end
 
@@ -58,15 +61,15 @@ def main
       order.add_item(item)
     end
 
-    order_data["flags"]&.each { |flag| order.update_flag(flag.to_sym) }
+    #order_data["flags"]&.each { |flag| order.update_flag(flag.to_sym) }
 
     # Apply filtering if CLI flags are set
-    next if options.any? && !order_data["flags"]&.any? { |f| options[f.to_sym] }
+    #next if options.any? && !order_data["flags"]&.any? { |f| options[f.to_sym] }
 
     Smedge::Utils::DisplayHelper.print_divider
 
     order.display_order
-    puts pastel.cyan("Status: #{order.display_flags}\n")
+    # puts pastel.cyan("Status: #{order.display_flags}\n")
 
     Smedge::Order.print_available_credit(client, "Before Order")
     order.apply_client_credit

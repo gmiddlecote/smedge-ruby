@@ -139,7 +139,6 @@ orders:
   - date: "04-04-2025"
     client: Ron
     discount: 0
-    flags: [printed, delivered]
     items:
       - description: "Horn"
         quantity: 6
@@ -157,7 +156,6 @@ orders:
   - date: "26-03-2025"
     client: Ron
     discount: 0
-    flags: [printed, delivered]
     items:
       - description: "Mask"
         quantity: 1
@@ -166,7 +164,6 @@ orders:
   - date: "08-04-2025"
     client: Ron
     discount: 0
-    flags: [awaiting_print]
     items:
       - description: "Large Cone Speaker"
         quantity: 2
@@ -175,7 +172,6 @@ orders:
   - date: "08-04-2025"
     client: Ron
     discount: 0
-    flags: [printed, delivered]
     items:
       - description: "Small slanted speaker"
         quantity: 2
@@ -187,7 +183,6 @@ orders:
   - date: "01-02-2025"
     client: Abhijeet Bhatia
     discount: 100_00
-    flags: [printed]
     items:
       - description: "Australia light holder"
         quantity: 1
@@ -199,7 +194,6 @@ orders:
   - date: "22-04-2025"
     client: Happy Feet School
     discount: 0
-    flags: [awaiting_print]
     items:
       - description: "Mini Sign"
         quantity: 1
@@ -208,7 +202,6 @@ orders:
   - date: "10-05-2025"
     client: Ryan
     discount: 50000
-    flags: [awaiting_print]
     items:
       - description: "Small slanted speaker"
         quantity: 2
@@ -241,7 +234,6 @@ orders:
   - date: "14-05-2025"
     client: Ron
     discount: 0
-    flags: [delivered]
     items:
       - description: "SVG of knobs"
         quantity: 2
@@ -256,7 +248,6 @@ orders:
   - date: "27-05-2025"
     client: Ron
     discount: 0
-    flags: [delivered]
     items:
       - description: "Convex 148/123 washer"
         quantity: 4
@@ -268,7 +259,6 @@ orders:
   - date: "01-06-2025"
     client: Themba
     discount: 0
-    flags: [printed]
     items:
       - description: "Sewing Machine Bobins"
         quantity: 15
@@ -277,7 +267,6 @@ orders:
   - date: "03-06-2025"
     client: Ron
     discount: 0
-    flags: [printing]
     items:
       - description: "1 inch cube"
         quantity: 4
@@ -289,7 +278,6 @@ orders:
   - date: "09-06-2025"
     client: Ron
     discount: 0
-    flags: [printing]
     items:
       - description: "Speaker cover with wire cover"
         quantity: 4
@@ -298,7 +286,6 @@ orders:
   - date: "16-06-2025"
     client: Ryan
     discount: 0
-    flags: [printing]
     items:
       - description: "Glass Speaker - Speaker ring"
         quantity: 1
@@ -322,7 +309,6 @@ orders:
   - date: "19-06-2025"
     client: Abhijeet Bhatia
     discount: 0
-    flags: [printed]
     items:
       - description: "Australia Light Holder"
         quantity: 7
