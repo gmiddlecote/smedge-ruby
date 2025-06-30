@@ -61,10 +61,10 @@ def main
       order.add_item(item)
     end
 
-    #order_data["flags"]&.each { |flag| order.update_flag(flag.to_sym) }
+    # order_data["flags"]&.each { |flag| order.update_flag(flag.to_sym) }
 
     # Apply filtering if CLI flags are set
-    #next if options.any? && !order_data["flags"]&.any? { |f| options[f.to_sym] }
+    # next if options.any? && !order_data["flags"]&.any? { |f| options[f.to_sym] }
 
     Smedge::Utils::DisplayHelper.print_divider
 

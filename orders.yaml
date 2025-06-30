@@ -313,3 +313,11 @@ orders:
       - description: "Australia Light Holder"
         quantity: 7
         rate: 30_00
+
+  - date: "28-06-2025"
+    client: Ron
+    discount: 0
+    items:
+      - description: "Small slanted speaker"
+        quantity: 2
+        rate: 15000
