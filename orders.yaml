@@ -134,6 +134,12 @@ transactions:
     date: "22-06-2025"
     mode: "cash"
     note: "ORD-19062025-001"
+  - client: Ron
+    type: income
+    amount: 300_00
+    date: "02-07-2025"
+    mode: "cash"
+    note: "ORD-28062025-001"
 
 orders:
   - date: "04-04-2025"
@@ -321,3 +327,11 @@ orders:
       - description: "Small slanted speaker"
         quantity: 2
         rate: 15000
+
+  - date: "02-07-2025"
+    client: Ron
+    discount: 0
+    items:
+      - description: "Coffee Cup Holder"
+        quantity: 4
+        rate: 150_00
