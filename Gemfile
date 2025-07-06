@@ -10,9 +10,8 @@ group :development do
 #   gem "rspec", "~> 3.0"
 #   gem "rubocop", "~> 1.21"
 #   gem "irb"
-gem "sorbet"
-gem "sorbet-runtime", "~> 0.5.90"
-gem "tapioca"
+gem "sorbet-static-and-runtime"
+gem "tapioca", require: false
 end
 
 # group :test do
