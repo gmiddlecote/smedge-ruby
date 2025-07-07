@@ -1,39 +1,39 @@
 # frozen_string_literal: true
+# typed: strict
 
 module Smedge
   module Utils
     # Currency
     module CurrencyFormatter
-      # # Format currency
-      # def format_currency(amount)
-      #   whole, decimal = format("%.2f", amount).split(".")
-      #   # Indian-style comma formatting
-      #   if whole.length > 3
-      #     last_three = whole[-3, 3]
-      #     other_digits = whole[0...-3]
-      #     formatted = other_digits.reverse.gsub(/(\d{2})(?=\d)/, '\\1,').reverse
-      #     whole = "#{formatted},#{last_three}"
-      #   end
-      #   "₹#{whole}.#{decimal}"
-      # end
+      extend T::Sig
 
-      # new money object
-      def new_money(amount)
-        Money.new(amount, "INR")
+      sig { params(amount: Integer).returns(Money) }
+      def self.new_money(amount)
+        Money.new(amount)
       end
 
-      # Add Commas
-      def format_money_in_indian_style(money, width: 10, pad_char: ' ')
-        money = Money.new(money, "INR") if money.is_a?(Integer) || money.is_a?(Float)
+      sig {
+        params(
+          amount: T.any(Money, Integer),
+          width: T.nilable(Integer),
+          pad_char: T.nilable(String)
+        ).returns(String) }
+      def self.format_money_in_indian_style(amount, width: 16, pad_char: " ")
 
-        amount = money.cents / 100.0
-        int, decimal = ("%.2f" % amount).split(".")
+        amount = Money.new(amount) if amount.is_a?(Integer)
 
-        int = int.reverse.gsub(/(\d{3})(?=\d)/, '\\1,').reverse
+        amount_with_cents = amount.cents.to_f / 100.0
+        int, decimal = ("%.2f" % amount_with_cents).split(".")
+
+        int = T.must(int).reverse.gsub(/(\d{3})(?=\d)/, '\\1,').reverse
         int = int.gsub(/(\d+),(\d{2})$/, '\\1,\\2')
 
         formatted_number = "#{int}.#{decimal}"
-        padded = "#{pad_char * (16 - formatted_number.length)}#{formatted_number}"
+
+        effective_width = width || 16
+        padding_length = [0, effective_width - formatted_number.length].max
+        pad = T.must(pad_char)
+        padded = "#{pad * padding_length}#{formatted_number}"
 
         "₹#{padded}"
       end

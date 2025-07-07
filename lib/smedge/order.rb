@@ -110,10 +110,10 @@ module Smedge
 
       # Add seperator and total row
       rows << :separator
-      rows << ["", "", "Grand Total", pastel.white(format_money_in_indian_style(Money.new(grand_total)))]
+      rows << ["", "", "Grand Total", pastel.white(Utils::CurrencyFormatter.format_money_in_indian_style(Money.new(grand_total)))]
       unless @discount.zero?
-        rows << ["", "", pastel.bright_yellow("Discount"), pastel.bright_yellow(format_money_in_indian_style(@discount))]
-        rows << ["", "", pastel.white("Net Total"), pastel.white(format_money_in_indian_style(total_amount_after_discount))]
+        rows << ["", "", pastel.bright_yellow("Discount"), pastel.bright_yellow(Utils::CurrencyFormatter.format_money_in_indian_style(@discount))]
+        rows << ["", "", pastel.white("Net Total"), pastel.white(Utils::CurrencyFormatter.format_money_in_indian_style(total_amount_after_discount))]
       end
       puts render_table(rows)
     end
@@ -125,8 +125,8 @@ module Smedge
         [
           item.item,
           item.quantity,
-          format_money_in_indian_style(item.rate),
-          format_money_in_indian_style(item.quantity * item.rate)
+          Utils::CurrencyFormatter.format_money_in_indian_style(item.rate),
+          Utils::CurrencyFormatter.format_money_in_indian_style(item.quantity * item.rate)
         ]
       end
     end

@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 require "bundler/setup"
+require "sorbet-runtime"
+
 Bundler.require
 
 require_relative "smedge/version"

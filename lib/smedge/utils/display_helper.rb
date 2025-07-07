@@ -19,7 +19,7 @@ module Smedge
       # available credit
       def print_available_credit(client, context)
         print pastel.inverse("Available Credit - #{context}".ljust(40))
-        credit_display = format_money_in_indian_style(client.available_credit)
+        credit_display = Utils::CurrencyFormatter.format_money_in_indian_style(client.available_credit)
         if client.available_credit.positive? || client.available_credit.zero?
           puts pastel.green(credit_display.rjust(15))
         else
@@ -34,7 +34,7 @@ module Smedge
         if balance_due.zero?
           puts pastel.inverse.green("Fully paid".rjust(17))
         else
-          puts pastel.white.on_red(format_money_in_indian_style(balance_due).rjust(15))
+          puts pastel.white.on_red(Utils::CurrencyFormatter.format_money_in_indian_style(balance_due).rjust(15))
         end
       end
 
