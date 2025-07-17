@@ -1,6 +1,8 @@
 #!/usr/bin/env ruby --yjit
 # frozen_string_literal: true
 
+# main.rb
+
 require "pastel"
 require "optparse"
 require "yaml"
@@ -49,9 +51,7 @@ def main
       next
     end
 
-    if options[:client_name] && order_data["client"] != options[:client_name]
-      next
-    end
+    next if options[:client_name] && order_data["client"] != options[:client_name]
 
     order = Smedge::Order.new(order_data["date"], client, order_data["discount"])
 

@@ -107,5 +107,4 @@ module Smedge
       puts pastel&.bold("\nNet Profit: #{Utils::CurrencyFormatter.format_money_in_indian_style(grand_profit)}") || "\nNet Profit: #{Utils::CurrencyFormatter.format_money_in_indian_style(grand_profit)}"
     end
   end
-
 end

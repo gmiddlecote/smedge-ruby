@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+# smedge.rb
+
 require "bundler/setup"
 require "sorbet-runtime"
 

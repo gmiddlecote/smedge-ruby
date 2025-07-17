@@ -1,5 +1,8 @@
 # frozen_string_literal: true
+
 # typed: strict
+
+# client.rb
 
 module Smedge
   # Client class

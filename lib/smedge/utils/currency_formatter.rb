@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+
 # typed: strict
 
 module Smedge
@@ -12,14 +13,14 @@ module Smedge
         Money.new(amount)
       end
 
-      sig {
+      sig do
         params(
           amount: T.any(Money, Integer),
           width: T.nilable(Integer),
           pad_char: T.nilable(String)
-        ).returns(String) }
+        ).returns(String)
+      end
       def self.format_money_in_indian_style(amount, width: 16, pad_char: " ")
-
         amount = Money.new(amount) if amount.is_a?(Integer)
 
         amount_with_cents = amount.cents.to_f / 100.0

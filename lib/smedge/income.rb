@@ -133,6 +133,5 @@ module Smedge
 
       puts pastel&.magenta("\nGrand Total: #{format_money_in_indian_style(grand_total)}") || "\nGrand Total: #{format_money_in_indian_style(grand_total)}"
     end
-
   end
 end

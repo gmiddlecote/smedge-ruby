@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+# display_helper.rb
+
 require "pastel"
 require "tty-font"
 require_relative "currency_formatter"
@@ -7,7 +9,6 @@ require_relative "../version"
 
 module Smedge
   module Utils
-
     # Display Helper
     module DisplayHelper
       include CurrencyFormatter

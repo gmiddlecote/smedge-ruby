@@ -3,9 +3,11 @@
 # expense.rb
 require_relative "utils/date_parse"
 require_relative "utils/currency_formatter"
-include Smedge::Utils::CurrencyFormatter
 
+# module Expense
 module Smedge
+  include Smedge::Utils::CurrencyFormatter
+
   # Expense Class
   class Expense < Transaction
     @@all = []

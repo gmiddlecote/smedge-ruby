@@ -1,8 +1,12 @@
-# date_parse
-module Smedge
-  module Utils
-    module DateParser
+# frozen_string_literal: true
 
+# date_parse
+
+module Smedge
+  # module Utils
+  module Utils
+    # module DateParser
+    module DateParser
       DEFAULT_FORMAT = "%d-%m-%Y"
 
       def self.parse(date_str)
@@ -13,7 +17,6 @@ module Smedge
         warn "[DateParser] Invalid date Format: '#{date_str}'"
         nil
       end
-
     end
   end
 end

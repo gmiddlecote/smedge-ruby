@@ -140,6 +140,14 @@ transactions:
     date: "02-07-2025"
     mode: "cash"
     note: "ORD-28062025-001"
+  # July 2024
+  - client: Pharmacy
+    type: expense
+    amount: 250_00
+    date: "15-07-2025"
+    mode: "cash"
+    note: "Payment"
+
 
 orders:
   - date: "04-04-2025"

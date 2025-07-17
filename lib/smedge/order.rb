@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+# typed: true
+
 require "date"
 require "tty-table"
 require "money"
@@ -8,6 +10,7 @@ require "pastel"
 module Smedge
   # order class
   class Order
+    extend T::Sig
 
     # Class-level accessor for the class instance variable
     class << self
@@ -17,15 +20,35 @@ module Smedge
     # Initialize class instance variable
     @daily_order_count = Hash.new(0)
 
-    attr_accessor :order_id, :date, :client, :items, :income, :status_flags, :discount
+    sig { returns(Integer) }
+    attr_accessor :order_id
 
+    sig { returns(Date) }
+    attr_accessor :date
+
+    sig { returns(Client) }
+    attr_accessor :client
+
+    sig { returns(Array) }
+    attr_accessor :items
+
+    sig { returns(Money) }
+    attr_accessor :income
+
+    sig { returns(Hash) }
+    attr_accessor :status_flags
+
+    sig { returns(Integer) }
+    attr_accessor :discount
+
+    sig { params(date: String, client: Client, discount: Integer).void }
     def initialize(date, client, discount = 0)
-      @date = Smedge::Utils::DateParser.parse(date)
+      @date = Utils::DateParser.parse(date)
       @client = client
-      @discount = Smedge::Utils::CurrencyFormatter.new_money(discount || 0)
+      @discount = Utils::CurrencyFormatter.new_money(discount)
       @items = []
       @income = []
-      self.generate_order_id
+      generate_order_id
       @status_flags = {
         awaiting_design: false,
         awaiting_material: false,
@@ -55,21 +78,20 @@ module Smedge
     end
 
     def apply_client_credit
-
       amount_to_cover = balance_due
-        return if amount_to_cover <= 0
+      return if amount_to_cover <= 0
 
-        credit_used_amount = client.use_credit(amount_to_cover)
-        return if credit_used_amount.cents <= 0
+      credit_used_amount = client.use_credit(amount_to_cover)
+      return if credit_used_amount.cents <= 0
 
-        @income << Income.new(
-          client: @client,
-          amount: credit_used_amount.cents,
-          date: Date.today.strftime("%d-%m-%Y"),
-          mode: "credit",
-          note: "Auto-applied to client credit",
-          order_id: @order_id
-        )
+      @income << Income.new(
+        client: @client,
+        amount: credit_used_amount.cents,
+        date: Date.today.strftime("%d-%m-%Y"),
+        mode: "credit",
+        note: "Auto-applied to client credit",
+        order_id: @order_id
+      )
     end
 
     def total_received
@@ -103,7 +125,7 @@ module Smedge
       print "\n\n"
       return puts "No order items" if @items.empty?
 
-      rows = self.build_order_rows
+      rows = build_order_rows
 
       # Calculate grand total
       grand_total = @items.sum { |item| item.quantity * item.rate }
