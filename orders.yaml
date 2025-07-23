@@ -134,20 +134,25 @@ transactions:
     date: "22-06-2025"
     mode: "cash"
     note: "ORD-19062025-001"
+  # July 2025
   - client: Ron
     type: income
     amount: 300_00
     date: "02-07-2025"
     mode: "cash"
     note: "ORD-28062025-001"
-  # July 2024
   - client: Pharmacy
     type: expense
     amount: 250_00
     date: "15-07-2025"
     mode: "cash"
     note: "Payment"
-
+  - client: Ron
+    type: income
+    amount: 600_00
+    date: "23-07-2025"
+    mode: "cash"
+    note: "ORD-28062025-001"
 
 orders:
   - date: "04-04-2025"
