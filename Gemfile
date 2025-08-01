@@ -11,6 +11,8 @@ group :development do
   #   gem "rubocop", "~> 1.21"
   #   gem "irb"
 
+  gem "sequel", "~> 5.94.0"
+  gem "sqlite3", "~> 2.7", ">= 2.7.3"
   gem "sorbet-static-and-runtime"
   gem "tapioca", require: false
   gem "yaml"

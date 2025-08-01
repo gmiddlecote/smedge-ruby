@@ -4,6 +4,7 @@
 
 require "bundler/setup"
 require "sorbet-runtime"
+require "sequel"
 
 Bundler.require
 
@@ -18,6 +19,7 @@ require_relative "smedge/utils/currency_formatter"
 require_relative "smedge/utils/date_parse"
 require_relative "smedge/utils/display_helper"
 require_relative "smedge/utils/load_data"
+require_relative "smedge/utils/db"
 
 # setup localization
 I18n.available_locales = %i[en en-IN]
