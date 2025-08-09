@@ -161,6 +161,18 @@ transactions:
     date: "07-08-2025"
     mode: "online"
     note: "ORD-07082025-001"
+  - client: Ron
+    type: income
+    amount: 300_00
+    date: "09-08-2025"
+    mode: "online"
+    note: "ORD-15082025-001"
+  - client: Ryan
+    type: income
+    amount: 2000_00
+    date: "09-08-2025"
+    mode: "online"
+    note: "ORD-15082025-001"
 
 orders:
   - date: "04-04-2025"
