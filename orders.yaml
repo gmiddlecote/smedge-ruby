@@ -8,6 +8,7 @@ clients:
   - name: Themba
   - name: Amazon
   - name: Mary Ann
+  - name: Ronald
 
 transactions:
   # March 2025
@@ -153,6 +154,13 @@ transactions:
     date: "23-07-2025"
     mode: "cash"
     note: "ORD-28062025-001"
+  # August 2025
+  - client: Ron
+    type: income
+    amount: 400_00
+    date: "07-08-2025"
+    mode: "online"
+    note: "ORD-07082025-001"
 
 orders:
   - date: "04-04-2025"
@@ -348,3 +356,21 @@ orders:
       - description: "Coffee Cup Holder"
         quantity: 4
         rate: 150_00
+
+  - date: "07-08-2025"
+    client: Ron
+    discount: 0
+    items:
+      - description: "Large Speaker Holder"
+        quantity: 2
+        rate: 200_00
+      - description: "Small Speaker Holder"
+        quantity: 2
+        rate: 150_00
+  - date: "01-08-2025"
+    client: Ronald
+    discount: 0
+    items:
+      - description: "Fidget Tracks"
+        quantity: 2
+        rate: 100_00

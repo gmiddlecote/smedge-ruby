@@ -2,12 +2,13 @@
 # typed: strict
 
 require "sequel"
+require "sorbet-runtime"
 
 module Smedge
-
   # Database functions
   module Db
-    extend self # makes methods available as module functions
+    extend T::Sig  # This must come before extend self
+    extend self    # makes methods available as module functions
 
     @db = T.let(Sequel.sqlite, Sequel::Database) # in-memory database
 

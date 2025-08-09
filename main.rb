@@ -18,6 +18,9 @@ def main
 
   pastel = Pastel.new
 
+  puts Smedge::Db.db.inspect # Should show Sequel database object
+  Smedge::Db.init_db # Should create tables without errors
+
   options = {}
   OptionParser.new do |opts|
     opts.banner = "Usage: main.rb [options]"
