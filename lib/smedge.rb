@@ -3,10 +3,9 @@
 # smedge.rb
 
 require "bundler/setup"
+Bundler.require
 require "sorbet-runtime"
 require "sequel"
-
-Bundler.require
 
 require_relative "smedge/version"
 require_relative "smedge/order"
@@ -22,16 +21,9 @@ require_relative "smedge/utils/load_data"
 require_relative "smedge/utils/db"
 
 # setup localization
-I18n.available_locales = %i[en en-IN]
+I18n.available_locales = %i[en]
 I18n.enforce_available_locales = true
-unless I18n.available_locales.include?(:'en-IN')
-  warn "[Smedge] warning: 'en-IN' locale not found. Using fallback: #{I18n.default_locale}"
-end
-I18n.locale = :'en-IN'
-
-# configure Money Gem
-Money.locale_backend = :i18n
-Money.default_currency = Money::Currency.new("INR")
+I18n.locale = :en
 Money.rounding_mode = BigDecimal::ROUND_HALF_UP
 Money.default_formatting_rules = {
   symbol: true,
