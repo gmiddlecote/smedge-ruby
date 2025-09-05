@@ -2,6 +2,7 @@
 # typed: strict
 
 module Smedge
+  # Client Class
   class Client
     extend T::Sig
 

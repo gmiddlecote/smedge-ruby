@@ -71,6 +71,9 @@ module Smedge
             )
             client.add_debit(expense)
             transactions["expense_#{idx}"] = expense
+          else
+            # type code here
+            pass
           end
         end
 

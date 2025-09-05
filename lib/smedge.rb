@@ -3,7 +3,7 @@
 # smedge.rb
 
 require "bundler/setup"
-Bundler.require
+Bundler.require('development')
 require "sorbet-runtime"
 require "sequel"
 

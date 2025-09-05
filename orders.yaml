@@ -1,6 +1,7 @@
 clients:
   - name: Ron
     email: ron@example.com
+    contact_number: 9922112233
   - name: Abhijeet Bhatia
   - name: Ryan
   - name: Happy Feet School
@@ -173,6 +174,19 @@ transactions:
     date: "09-08-2025"
     mode: "online"
     note: "ORD-15082025-001"
+  - client: Abhijeet Bhatia
+    type: income
+    amount: 1000_00
+    date: "22-08-2025"
+    mode: "online"
+    note: "ORD-15082025-001"
+  - client: Ron
+    type: income
+    amount: 320_00
+    date: "23-08-2025"
+    mode: "online"
+    note: "ORD"
+  
 
 orders:
   - date: "04-04-2025"
@@ -214,10 +228,10 @@ orders:
     items:
       - description: "Small slanted speaker"
         quantity: 2
-        rate: 15000
+        rate: 150_00
       - description: "Large text sign"
         quantity: 1
-        rate: 15000
+        rate: 150_00
 
   - date: "01-02-2025"
     client: Abhijeet Bhatia
@@ -385,4 +399,20 @@ orders:
     items:
       - description: "Fidget Tracks"
         quantity: 2
+        rate: 100_00
+
+  - date: "20-08-2025"
+    client: Abhijeet Bhatia
+    discount: 0
+    items:
+      - description: "Seven Mountains"
+        quantity: 1
+        rate: 1000_00
+
+  - date: "21-08-2025"
+    client: Ron
+    discount: 80_00
+    items:
+      - description: "Terminal Cap"
+        quantity: 4
         rate: 100_00
