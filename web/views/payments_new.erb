@@ -1,0 +1,56 @@
+<%# Payment form: amount received, optional sale to apply it to. %>
+<h1>Record Payment</h1>
+
+<form method="post" action="/payments" class="form">
+  <div class="field">
+    <label for="client">Customer *</label>
+    <input type="text" id="client" name="client" list="clients" value="<%= h(@form && @form["client"] ? @form["client"] : @client_name) %>" required autofocus>
+    <datalist id="clients">
+      <% @clients.each do |client| %>
+        <option value="<%= h(client.name) %>"></option>
+      <% end %>
+    </datalist>
+  </div>
+
+  <div class="field">
+    <label for="amount">Amount received (₹) *</label>
+    <input type="text" id="amount" name="amount" inputmode="decimal" placeholder="e.g. 2500.00" value="<%= h(@form && @form["amount"]) %>" required>
+  </div>
+
+  <div class="field">
+    <label for="date">Date *</label>
+    <input type="date" id="date" name="date" value="<%= h(@form && @form["date"]) %>" required>
+  </div>
+
+  <div class="field">
+    <label for="mode">Mode *</label>
+    <select id="mode" name="mode">
+      <% ["cash", "bank", "cheque", "upi", "credit", "other"].each do |option| %>
+        <option value="<%= option %>" <%= "selected" if @form && @form["mode"] == option %>><%= option %></option>
+      <% end %>
+    </select>
+  </div>
+
+  <div class="field">
+    <label for="note">Note</label>
+    <input type="text" id="note" name="note" placeholder="e.g. Advance for order screen printing" value="<%= h(@form && @form["note"]) %>">
+  </div>
+
+  <div class="field">
+    <label for="order_ref">Apply to a sale (optional)</label>
+    <select id="order_ref" name="order_ref">
+      <option value="">Account credit (no sale)</option>
+      <% @orders.sort_by(&:date).each do |order| %>
+        <option value="<%= order.order_id %>" <%= "selected" if @form && @form["order_ref"] == order.order_id %>>
+          <%= order.order_id %> - <%= order.client.name %> - <%= money(order.total_amount_after_discount) %>
+        </option>
+      <% end %>
+    </select>
+    <p class="muted">Choose a sale to apply this payment to its outstanding balance, or leave as account credit to the customer.</p>
+  </div>
+
+  <div class="actions">
+    <button type="submit">Save Payment</button>
+    <a class="button" href="/clients">Cancel</a>
+  </div>
+</form>

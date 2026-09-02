@@ -1,0 +1,31 @@
+<h1>Customers</h1>
+
+<% if @clients.empty? %>
+  <p>No customers yet. <a href="/customers/new">Add one</a>.</p>
+<% else %>
+  <table class="data wide">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Email</th>
+        <th>Credit (Income)</th>
+        <th>Debits (Expense)</th>
+        <th>Balance</th>
+        <th>Orders</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% @clients.each do |client| %>
+        <% balance = client.available_credit - client.total_debits %>
+        <tr>
+          <td><%= link_to_client(client) %></td>
+          <td><%= client.email %></td>
+          <td class="num positive"><%= money(client.available_credit) %></td>
+          <td class="num negative"><%= money(client.total_debits) %></td>
+          <td class="num <%= "positive" if balance.positive? %> <%= "negative" if balance.negative? %>"><%= money(balance) %></td>
+          <td><%= @orders.count { |order| order.client.id == client.id } %></td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+<% end %>

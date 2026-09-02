@@ -3,7 +3,7 @@
 # typed: strict
 
 module Smedge
-  # Order  Item class
+  # One line of an order: a description, quantity and unit rate.
   class OrderItem
     extend T::Sig
 
@@ -28,6 +28,7 @@ module Smedge
       @rate = Utils::CurrencyFormatter.new_money(rate)
     end
 
+    # Line subtotal: rate x quantity.
     sig { returns(Money) }
     def total
       @rate * @quantity

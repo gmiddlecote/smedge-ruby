@@ -1,0 +1,41 @@
+<div class="order-header">
+  <strong>Order: <%= h(order.order_id) %></strong>
+  <span>Date: <%= fmt_date(order.date) %></span>
+  <span>Customer: <%= h(order.client.name) %></span>
+</div>
+
+<% if order.items.empty? %>
+  <p class="muted">No order items</p>
+<% else %>
+  <table class="data">
+    <thead>
+      <tr><th>Item</th><th>Quantity</th><th>Rate</th><th>Subtotal</th></tr>
+    </thead>
+    <tbody>
+      <% order.items.each do |item| %>
+        <tr>
+          <td><%= h(item.item) %></td>
+          <td class="num"><%= item.quantity %></td>
+          <td class="num"><%= money(item.rate) %></td>
+          <td class="num"><%= money(item.total) %></td>
+        </tr>
+      <% end %>
+    </tbody>
+    <tfoot>
+      <tr>
+        <td colspan="3">Grand Total</td>
+        <td class="num"><%= money(order.total_amount_before_discount) %></td>
+      </tr>
+      <% unless order.discount.zero? %>
+        <tr>
+          <td colspan="3">Discount</td>
+          <td class="num negative"><%= money(order.discount) %></td>
+        </tr>
+      <% end %>
+      <tr>
+        <td colspan="3">Net Total</td>
+        <td class="num"><%= money(order.total_amount_after_discount) %></td>
+      </tr>
+    </tfoot>
+  </table>
+<% end %>

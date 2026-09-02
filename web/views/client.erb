@@ -1,0 +1,85 @@
+<%# Customer page: summary cards, payment/expense tables and credit flow. %>
+<% balance = @client.available_credit - @client.total_debits %>
+
+<h1><%= h(@client.name) %></h1>
+<% if @client.email %><p class="muted"><%= h(@client.email) %></p><% end %>
+
+<div class="cards">
+  <div class="card">
+    <div class="card-label">Available Credit</div>
+    <div class="card-value"><%= money(@client.available_credit) %></div>
+  </div>
+  <div class="card">
+    <div class="card-label">Total Debits</div>
+    <div class="card-value"><%= money(@client.total_debits) %></div>
+  </div>
+  <div class="card">
+    <div class="card-label">Balance</div>
+    <div class="card-value"><%= money(balance) %></div>
+  </div>
+  <div class="card">
+    <div class="card-label">Orders</div>
+    <div class="card-value"><%= @client_orders.size %></div>
+  </div>
+</div>
+
+<h2>Payments (Income)</h2>
+<% if @client.credits.empty? %>
+  <p class="muted">No payments recorded.</p>
+<% else %>
+  <table class="data">
+    <thead>
+      <tr><th>#</th><th>Date</th><th>Amount</th><th>Mode</th><th>Note</th></tr>
+    </thead>
+    <tbody>
+      <% @client.credits.each_with_index do |credit, i| %>
+        <tr>
+          <td><%= i + 1 %></td>
+          <td><%= fmt_date(credit.date) %></td>
+          <td class="num positive"><%= money(credit.amount) %></td>
+          <td><%= h(credit.mode.to_s) %></td>
+          <td><%= h(credit.note.to_s) %></td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+<% end %>
+
+<h2>Expenses (Debits)</h2>
+<% if @client.debits.empty? %>
+  <p class="muted">No expenses recorded.</p>
+<% else %>
+  <table class="data">
+    <thead>
+      <tr><th>#</th><th>Date</th><th>Amount</th><th>Mode</th><th>Note</th></tr>
+    </thead>
+    <tbody>
+      <% @client.debits.each_with_index do |debit, i| %>
+        <tr>
+          <td><%= i + 1 %></td>
+          <td><%= fmt_date(debit.date) %></td>
+          <td class="num negative"><%= money(debit.amount) %></td>
+          <td><%= h(debit.mode.to_s) %></td>
+          <td><%= h(debit.note.to_s) %></td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+<% end %>
+
+<h2>Orders</h2>
+<a class="button" href="<%= record_payment_href(@client) %>">Record payment for <%= h(@client.name) %></a>
+<% if @credit_flow.empty? %>
+  <p class="muted">No orders for this customer yet.</p>
+<% else %>
+  <% @credit_flow.each do |entry| %>
+    <div class="receipt">
+      <%= erb :_order, locals: { order: entry[:order] } %>
+      <p class="muted">
+        Available Credit before order: <strong><%= money(entry[:credit_before]) %></strong> |
+        Balance Due: <strong><%= money(entry[:balance_due]) %></strong> |
+        Available Credit after order: <strong><%= money(entry[:credit_after]) %></strong>
+      </p>
+    </div>
+  <% end %>
+<% end %>

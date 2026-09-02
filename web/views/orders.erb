@@ -1,0 +1,28 @@
+<h1>Orders</h1>
+
+<% if @orders.empty? %>
+  <p>No orders yet. <a href="/sales/new">Add one</a>.</p>
+<% else %>
+  <table class="data">
+    <thead>
+      <tr>
+        <th>Order</th>
+        <th>Date</th>
+        <th>Customer</th>
+        <th>Items</th>
+        <th>Net Total</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% @orders.each do |order| %>
+        <tr>
+          <td><%= order.order_id %></td>
+          <td><%= fmt_date(order.date) %></td>
+          <td><%= link_to_client(order.client) %></td>
+          <td><%= order.items.size %></td>
+          <td class="num"><%= money(order.total_amount_after_discount) %></td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+<% end %>

@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Smedge</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <%# Shared site header: brand + navigation for every page. %>
+  <header>
+    <div class="brand">Smedge</div>
+    <nav>
+      <a href="/">Dashboard</a>
+      <a href="/clients">Customers</a>
+      <a href="/orders">Orders</a>
+      <a href="/customers/new">Add Customer</a>
+      <a href="/sales/new">Add Sale</a>
+      <a href="/payments/new">Add Payment</a>
+    </nav>
+  </header>
+
+  <main>
+    <%# One-time notices (e.g. "Sale ORD-... added") shown after redirects. %>
+    <% if session[:notice] %>
+      <div class="flash"><%= session.delete(:notice) %></div>
+    <% end %>
+    <% if @error %>
+      <div class="flash error"><%= @error %></div>
+    <% end %>
+    <%= yield %>
+  </main>
+  <script src="/app.js"></script>
+</body>
+</html>

@@ -1,12 +1,17 @@
 # frozen_string_literal: true
 
+# typed: true
+
 # income.rb
 require_relative "utils/date_parse"
 require_relative "utils/currency_formatter"
 
 module Smedge
-  # Income Class
+  # Money received from a client (a payment). If order_id is set the payment
+  # is linked to a specific order; otherwise it credits the client's account.
   class Income < Transaction
+    extend T::Sig
+
     class << self
       attr_reader :all
     end
@@ -21,6 +26,12 @@ module Smedge
       self.class.all << self
     end
 
+    sig { void }
+    def self.reset_all
+      @all = []
+    end
+
+    sig { returns(T::Boolean) }
     def extra?
       order_id.nil?
     end
@@ -35,6 +46,7 @@ module Smedge
       # end
     end
 
+    sig { returns(T::Hash[Symbol, T.untyped]) }
     def to_h
       {
         client: @client.name,
@@ -47,6 +59,7 @@ module Smedge
     end
 
     # class method to access all receipts
+    sig { params(pastel: T.untyped).void }
     def self.display_all(pastel: nil)
       puts "\nAll receipts:"
       all.each_with_index do |receipt, index|
@@ -54,8 +67,11 @@ module Smedge
       end
     end
 
+    # True when this payment was auto-generated from client credit usage
+    # (vs. a real cash/bank receipt), so it can be excluded from receipt lists.
+    sig { returns(T::Boolean) }
     def auto_applied_credit?
-      mode == "credit" && note.include?("Auto-applied")
+      mode == "credit" && note.to_s.include?("Auto-applied")
     end
 
     def self.display_all_grouped_by_client(pastel: nil)

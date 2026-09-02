@@ -1,0 +1,62 @@
+<h1>Add Sale</h1>
+
+<%
+  items = if @form && @form["item"].is_a?(Hash)
+            size = [Array(@form["item"]["description"]).size, Array(@form["item"]["quantity"]).size, Array(@form["item"]["rate"]).size].max
+            (0...size).map do |i|
+              {
+                description: Array(@form["item"]["description"])[i].to_s,
+                quantity: Array(@form["item"]["quantity"])[i].to_s,
+                rate: Array(@form["item"]["rate"])[i].to_s
+              }
+            end
+          else
+            [{ description: "", quantity: "", rate: "" }]
+          end
+%>
+
+<form method="post" action="/sales" class="form" id="sale-form">
+  <div class="field">
+    <label for="client">Customer *</label>
+    <input type="text" id="client" name="client" list="clients" value="<%= h(@form && @form["client"]) %>" required autofocus>
+    <datalist id="clients">
+      <% @clients.each do |client| %>
+        <option value="<%= h(client.name) %>"></option>
+      <% end %>
+    </datalist>
+  </div>
+
+  <div class="field">
+    <label for="date">Date *</label>
+    <input type="date" id="date" name="date" value="<%= h(@form && @form["date"]) %>" required>
+  </div>
+
+  <div class="field">
+    <label for="discount">Discount (₹)</label>
+    <input type="text" id="discount" name="discount" inputmode="decimal" placeholder="e.g. 50.00 (blank = none)" value="<%= h(@form && @form["discount"]) %>">
+  </div>
+
+  <h2>Items</h2>
+  <table class="data" id="items-table">
+    <thead>
+      <tr><th>Description</th><th>Quantity</th><th>Rate (₹)</th><th>Line Total</th><th></th></tr>
+    </thead>
+    <tbody>
+      <% items.each do |item| %>
+        <tr>
+          <td><input type="text" name="item[description][]" value="<%= h(item[:description]) %>" required></td>
+          <td><input type="text" name="item[quantity][]" inputmode="numeric" value="<%= h(item[:quantity]) %>" required class="qty"></td>
+          <td><input type="text" name="item[rate][]" inputmode="decimal" value="<%= h(item[:rate]) %>" required class="rate"></td>
+          <td class="num line-total">-</td>
+          <td><button type="button" class="remove-row" aria-label="Remove item">Remove</button></td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+
+  <div class="actions">
+    <button type="button" id="add-item">Add Item</button>
+    <button type="submit">Save Sale</button>
+    <a class="button" href="/orders">Cancel</a>
+  </div>
+</form>

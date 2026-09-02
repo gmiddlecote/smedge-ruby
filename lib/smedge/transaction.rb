@@ -3,7 +3,8 @@
 # typed: strict
 
 module Smedge
-  # Transaction
+  # Base class for money movements (Income received, Expense paid). Holds the
+  # amount, date, mode (cash/bank/...) and an optional note for a client.
   class Transaction
     extend T::Sig
 
@@ -36,6 +37,11 @@ module Smedge
       @client = client
     end
 
+    # CLI report: group transactions by "Month Year", print income and expense
+    # tables per month, then running totals and net profit. Optionally filtered
+    # to a single client via +client_name+.
+    # pastel is kept T.untyped: Pastel's color methods are dynamic (method_missing).
+    sig { params(pastel: T.untyped, client_name: T.nilable(String)).void }
     def self.display_income_and_expense_by_month(pastel: nil, client_name: nil)
       income_data = Income.all.select { |r| r.date && (client_name.nil? || r.client.name == client_name) }
       expense_data = Expense.all.select { |r| r.date && (client_name.nil? || r.client.name == client_name) }

@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+# typed: true
+
 # display_helper.rb
 
 require "pastel"
@@ -9,15 +11,22 @@ require_relative "../version"
 
 module Smedge
   module Utils
-    # Display Helper
+    # Pretty CLI decoration: banners, dividers, and credit/balance summaries.
     module DisplayHelper
+      extend T::Sig
+
       module_function
 
+      # Lazily create a single Pastel instance for colored console output.
+      # Returned as T.untyped because Pastel's color methods are dynamic
+      # (method_missing) and have no static signatures.
+      sig { returns(T.untyped) }
       def pastel
         @pastel ||= Pastel.new
       end
 
       # available credit
+      sig { params(client: Client, context: String).void }
       def print_available_credit(client, context)
         print pastel.inverse("Available Credit - #{context}".ljust(40))
         credit_display = Utils::CurrencyFormatter.format_money_in_indian_style(client.available_credit)
@@ -29,6 +38,7 @@ module Smedge
       end
 
       # balance due
+      sig { params(order: Order).void }
       def print_balance_due(order)
         print pastel.inverse("Balance Due".ljust(40))
         balance_due = order.balance_due
@@ -40,6 +50,7 @@ module Smedge
       end
 
       # divider
+      sig { void }
       def print_divider
         print "\n"
         80.times { print pastel.bright_yellow("*") }
@@ -47,6 +58,7 @@ module Smedge
       end
 
       # fancy banner
+      sig { params(app_name: String, width: Integer).void }
       def print_fancy_banner(app_name = "Smedge", width = 80)
         pastel = Pastel.new
         font = TTY::Font.new(:standard)

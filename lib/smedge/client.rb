@@ -2,10 +2,13 @@
 # typed: strict
 
 module Smedge
-  # Client Class
+  # A customer. Holds everything received from them (credits / incomes) and
+  # everything paid out on their behalf (debits / expenses). A client's
+  # available credit is the sum of credits minus whatever has been used.
   class Client
     extend T::Sig
 
+    # Database id (nil for objects created outside the persistence layer).
     sig { returns(T.nilable(Integer)) }
     attr_reader :id
 
@@ -14,6 +17,12 @@ module Smedge
 
     sig { returns(T.nilable(String)) }
     attr_accessor :email
+
+    sig { returns(T::Array[Income]) }
+    attr_reader :credits
+
+    sig { returns(T::Array[Expense]) }
+    attr_reader :debits
 
     sig { params(name: String, email: T.nilable(String), id: T.nilable(Integer)).void }
     def initialize(name, email = nil, id = nil)
@@ -36,11 +45,21 @@ module Smedge
       expense
     end
 
+    # Money received from the client that is still unspent against orders.
     sig { returns(Money) }
     def available_credit
       @credits.sum(T.let(Utils::CurrencyFormatter.new_money(0), Money), &:amount)
     end
 
+    # Total money spent on this client's behalf (expenses recorded against them).
+    sig { returns(Money) }
+    def total_debits
+      @debits.sum(T.let(Utils::CurrencyFormatter.new_money(0), Money), &:amount)
+    end
+
+    # Draw down credits balance to pay up to +amount+ of an order's balance.
+    # Credits are consumed oldest-first and mutated in place; returns the
+    # amount actually covered (may be less than +amount+).
     sig { params(amount: Money).returns(Money) }
     def use_credit(amount)
       used = T.let(Money.new(0), Money)

@@ -1,0 +1,98 @@
+<h1>Dashboard</h1>
+
+<%# Top-level summary cards: customer/order counts and money totals. %>
+<% total_income = @summary.sum(Money.new(0)) { |s| s[:income_total] } %>
+<% total_expense = @summary.sum(Money.new(0)) { |s| s[:expense_total] } %>
+<% total_sales = @orders.sum(Money.new(0)) { |o| o.total_amount_after_discount } %>
+
+<div class="cards">
+  <div class="card">
+    <div class="card-label">Customers</div>
+    <div class="card-value"><%= @clients.size %></div>
+  </div>
+  <div class="card">
+    <div class="card-label">Orders</div>
+    <div class="card-value"><%= @orders.size %></div>
+  </div>
+  <div class="card">
+    <div class="card-label">Total Sales</div>
+    <div class="card-value"><%= money(total_sales) %></div>
+  </div>
+  <div class="card">
+    <div class="card-label">Net Income (Income - Expense)</div>
+    <div class="card-value"><%= money(total_income - total_expense) %></div>
+  </div>
+</div>
+
+<%# Monthly income/expense trend chart (rendered as SVG). %>
+<% if @summary.any? %>
+  <div class="chart-panel">
+    <div class="chart-legend">
+      <span><span class="swatch income"></span>Income</span>
+      <span><span class="swatch expense"></span>Expense</span>
+    </div>
+    <%= line_chart(@summary) %>
+  </div>
+<% end %>
+
+<h2>Monthly Income / Expense</h2>
+<% if @summary.empty? %>
+  <p>No transactions recorded yet.</p>
+<% else %>
+  <table class="data wide">
+    <thead>
+      <tr>
+        <th>Month</th>
+        <th>Income</th>
+        <th>Expense</th>
+        <th>Net</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% @summary.each do |s| %>
+        <tr>
+          <td><%= s[:month] %></td>
+          <td class="num positive"><%= money(s[:income_total]) %></td>
+          <td class="num negative"><%= money(s[:expense_total]) %></td>
+          <td class="num"><%= money(s[:income_total] - s[:expense_total]) %></td>
+        </tr>
+      <% end %>
+    </tbody>
+    <tfoot>
+      <tr>
+        <td>Total</td>
+        <td class="num positive"><%= money(total_income) %></td>
+        <td class="num negative"><%= money(total_expense) %></td>
+        <td class="num"><%= money(total_income - total_expense) %></td>
+      </tr>
+    </tfoot>
+  </table>
+<% end %>
+
+<h2>Recent Orders</h2>
+<% if @recent_orders.empty? %>
+  <p>No orders yet.</p>
+<% else %>
+  <table class="data">
+    <thead>
+      <tr>
+        <th>Order</th>
+        <th>Date</th>
+        <th>Customer</th>
+        <th>Items</th>
+        <th>Net Total</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% @recent_orders.each do |order| %>
+        <tr>
+          <td><%= order.order_id %></td>
+          <td><%= fmt_date(order.date) %></td>
+          <td><%= link_to_client(order.client) %></td>
+          <td><%= order.items.size %></td>
+          <td class="num"><%= money(order.total_amount_after_discount) %></td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+<% end %>

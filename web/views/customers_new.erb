@@ -1,0 +1,16 @@
+<h1>Add Customer</h1>
+
+<form method="post" action="/customers" class="form">
+  <div class="field">
+    <label for="name">Customer name *</label>
+    <input type="text" id="name" name="name" value="<%= h(@name) %>" required autofocus>
+  </div>
+  <div class="field">
+    <label for="email">Email</label>
+    <input type="email" id="email" name="email" value="<%= h(@email) %>">
+  </div>
+  <div class="actions">
+    <button type="submit">Save Customer</button>
+    <a class="button" href="/clients">Cancel</a>
+  </div>
+</form>

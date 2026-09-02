@@ -1,0 +1,232 @@
+/* Design tokens: colors used across the app. */
+:root {
+  --bg: #f4f6f9;
+  --panel: #ffffff;
+  --ink: #1f2430;
+  --muted: #6b7280;
+  --line: #e2e6ec;
+  --accent: #2563eb;
+  --accent-dark: #1d4ed8;
+  --good: #16a34a;
+  --bad: #dc2626;
+}
+
+* { box-sizing: border-box; }
+
+/* Layout: header, nav and main column. */
+body {
+  margin: 0;
+  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+}
+
+header {
+  background: var(--ink);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+  padding: 0 1.5rem;
+  height: 56px;
+}
+
+header .brand {
+  font-weight: 700;
+  font-size: 1.2rem;
+  letter-spacing: 1px;
+}
+
+nav { display: flex; gap: 0.25rem; }
+
+nav a {
+  color: #d3d9e2;
+  text-decoration: none;
+  padding: 0.5rem 0.9rem;
+  border-radius: 6px;
+  font-size: 0.95rem;
+}
+
+nav a:hover { background: rgba(255, 255, 255, 0.12); color: #fff; }
+
+main {
+  max-width: 1080px;
+  margin: 2rem auto;
+  padding: 0 1.5rem;
+}
+
+h1 { margin: 0 0 1rem; font-size: 1.6rem; }
+h2 { margin: 2rem 0 0.75rem; font-size: 1.2rem; }
+
+.muted { color: var(--muted); }
+
+/* Summary cards at the top of dashboard and customer pages. */
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 1rem 1.25rem;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.card-label { color: var(--muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.4px; }
+.card-value { font-size: 1.4rem; font-weight: 600; margin-top: 0.25rem; }
+
+/* Data tables used for listings and reports. */
+table.data {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+table.wide { margin-bottom: 1rem; }
+
+table.data th, table.data td {
+  text-align: left;
+  padding: 0.6rem 0.9rem;
+  border-bottom: 1px solid var(--line);
+  font-size: 0.92rem;
+}
+
+table.data thead th { background: #eef1f6; font-weight: 600; }
+table.data tbody tr:last-child td { border-bottom: none; }
+table.data tfoot td { border-top: 2px solid var(--line); font-weight: 600; background: #fafbfc; }
+table.data td.num, table.data th.num { text-align: right; font-variant-numeric: tabular-nums; }
+
+.positive { color: var(--good); }
+.negative { color: var(--bad); }
+
+/* Dashboard income/expense chart. */
+.chart-panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1.5rem;
+}
+
+.chart-legend { display: flex; gap: 1.5rem; margin-bottom: 0.6rem; }
+.chart-legend span { display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.9rem; color: var(--muted); }
+.swatch { width: 14px; height: 3px; border-radius: 2px; display: inline-block; }
+.swatch.income { background: var(--good); }
+.swatch.expense { background: var(--bad); }
+
+#monthly-chart { width: 100%; height: auto; display: block; }
+#monthly-chart .gridline { stroke: var(--line); stroke-width: 1; }
+#monthly-chart .baseline { stroke: var(--line); stroke-width: 2; }
+#monthly-chart .chart-y { font-size: 10px; fill: var(--muted); }
+#monthly-chart .chart-x { font-size: 11px; fill: var(--muted); }
+#monthly-chart .line { fill: none; stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; }
+#monthly-chart .line.income { stroke: var(--good); }
+#monthly-chart .line.expense { stroke: var(--bad); }
+#monthly-chart .dot { fill: transparent; cursor: crosshair; }
+
+.chart-tip {
+  position: fixed;
+  background: var(--ink);
+  color: #fff;
+  border-radius: 8px;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.85rem;
+  pointer-events: none;
+  z-index: 100;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+}
+
+.chart-tip-month { font-weight: 600; margin-bottom: 0.25rem; white-space: nowrap; }
+.chart-tip-row { white-space: nowrap; }
+.chart-tip .positive { color: #86efac; }
+.chart-tip .negative { color: #fca5a5; }
+
+a { color: var(--accent); }
+a:hover { color: var(--accent-dark); }
+
+/* Flash notices rendered after form posts. */
+.flash {
+  background: #dff3e4;
+  border: 1px solid #b7e2c3;
+  color: #166534;
+  padding: 0.7rem 1rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+}
+
+.flash.error {
+  background: #fde8e8;
+  border-color: #f5c2c2;
+  color: #991b1b;
+}
+
+/* Sale receipt card shown on customer and order pages. */
+.receipt {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1.25rem;
+}
+
+.receipt .data { margin-bottom: 0.6rem; }
+
+.order-header { display: flex; gap: 1.5rem; margin-bottom: 0.75rem; }
+.order-header strong { margin-right: 0.25rem; }
+
+/* Forms: field grouping, actions and input styling. */
+.form {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 1.5rem;
+  max-width: 720px;
+}
+
+.field { margin-bottom: 1rem; }
+
+.field label { display: block; font-weight: 600; margin-bottom: 0.35rem; font-size: 0.9rem; }
+
+.field input[type="text"], .field input[type="email"], .field input[type="date"] {
+  width: 100%;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-size: 0.95rem;
+}
+
+.field input:focus, table.data input:focus { outline: 2px solid var(--accent); outline-offset: 0; }
+
+#items-table input { width: 100%; padding: 0.4rem 0.5rem; border: 1px solid var(--line); border-radius: 6px; }
+
+.actions { display: flex; gap: 0.75rem; margin-top: 1.25rem; }
+
+button, .button {
+  background: var(--accent);
+  color: #fff;
+  border: 0;
+  padding: 0.55rem 1.1rem;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+button:hover, .button:hover { background: var(--accent-dark); color: #fff; }
+
+button.remove-row {
+  background: transparent;
+  color: var(--bad);
+  border: 1px solid var(--bad);
+  padding: 0.35rem 0.7rem;
+}
+
+#add-item { background: #eef1f6; color: var(--ink); }
+#add-item:hover { background: #dfe4ec; }

@@ -8,16 +8,17 @@ require "money"
 require "pastel"
 
 module Smedge
-  # order class
+  # A sale made to a Client: a dated collection of OrderItems with an optional
+  # discount. Payment (Income) records can be attached, giving a balance_due.
   class Order
     extend T::Sig
 
-    # Class-level accessor for the class instance variable
+    # Per-process counter of orders created per date (yyyyMMdd), used to build
+    # the human-readable order id like ORD-05092026-001. Reset on every load.
     class << self
       attr_accessor :daily_order_count
     end
 
-    # Initialize class instance variable
     @daily_order_count = Hash.new(0)
 
     sig { returns(String) }
@@ -41,6 +42,7 @@ module Smedge
     sig { returns(Money) }
     attr_accessor :discount
 
+    # date is a "dd-mm-yyyy" string; discount is an amount in paise.
     sig { params(date: String, client: Client, discount: Integer).void }
     def initialize(date, client, discount = 0)
       @date = Utils::DateParser.parse(date)
@@ -71,12 +73,16 @@ module Smedge
       @status_flags.map { |k, v| "#{k}: #{v ? "✔" : "✖"}" }.join(", ")
     end
 
+    # Attach a received payment to this order. Payments linked to another
+    # order (or explicitly tagged for a different one) are rejected.
     def add_payment(income)
       raise Smedge::Error, "Receipt order ID mismatch" if income.order_id && income.order_id != @order_id
 
       @income << income
     end
 
+    # Spend the client's available credit against the remaining balance,
+    # recording the spent amount as an auto-applied credit payment.
     def apply_client_credit
       amount_to_cover = balance_due
       return if amount_to_cover <= 0
@@ -94,10 +100,12 @@ module Smedge
       )
     end
 
+    # Sum of payments received against this order.
     def total_received
       @income.sum(&:amount)
     end
 
+    # Sum of all line items (quantity x rate) before any discount.
     def total_amount_before_discount
       @items.map(&:total).reduce(Smedge::Utils::CurrencyFormatter.new_money(0), :+)
     end
@@ -106,6 +114,7 @@ module Smedge
       total_amount_before_discount - @discount
     end
 
+    # What the client still owes after discount and received payments.
     def balance_due
       total_amount_after_discount - total_received
     end
@@ -168,6 +177,7 @@ module Smedge
 
     public
 
+    # Build "ORD-DDMMYYYY-SSS" using a per-date serial number.
     def generate_order_id
       key = date.strftime("%d%m%Y")
       self.class.daily_order_count[key] += 1
