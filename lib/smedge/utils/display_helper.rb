@@ -11,7 +11,7 @@ module Smedge
   module Utils
     # Display Helper
     module DisplayHelper
-      include CurrencyFormatter
+      module_function
 
       def pastel
         @pastel ||= Pastel.new

@@ -21,7 +21,7 @@ module Smedge
 
         clients = {}
         data["clients"].each do |client_hash|
-          client = Smedge::Client.new(client_hash["name"])
+          client = Smedge::Client.new(client_hash["name"], client_hash["email"])
           clients[client.name] = client
         end
 
@@ -45,6 +45,7 @@ module Smedge
 
         data["transactions"].each_with_index do |txn, idx|
           next unless txn.is_a?(Hash)
+
           client = clients[txn["client"]]
           next unless client
 
@@ -72,14 +73,12 @@ module Smedge
             client.add_debit(expense)
             transactions["expense_#{idx}"] = expense
           else
-            # type code here
-            pass
+            next
           end
         end
 
         transactions
       end
-
     end
   end
 end

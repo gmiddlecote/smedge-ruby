@@ -7,14 +7,18 @@ require_relative "utils/currency_formatter"
 module Smedge
   # Income Class
   class Income < Transaction
-    attr_accessor :order_id
+    class << self
+      attr_reader :all
+    end
 
-    @@all = []
+    @all = []
+
+    attr_accessor :order_id
 
     def initialize(date:, amount:, mode:, note:, client:, order_id: nil)
       super(date, amount, mode, note, client)
       @order_id = order_id
-      @@all << self
+      self.class.all << self
     end
 
     def extra?
@@ -43,13 +47,9 @@ module Smedge
     end
 
     # class method to access all receipts
-    def self.all
-      @@all
-    end
-
     def self.display_all(pastel: nil)
       puts "\nAll receipts:"
-      @@all.each_with_index do |receipt, index|
+      all.each_with_index do |receipt, index|
         receipt.display(pastel: pastel, index: index + 1)
       end
     end
@@ -59,19 +59,19 @@ module Smedge
     end
 
     def self.display_all_grouped_by_client(pastel: nil)
-      grouped = @@all.group_by { |p| p.client.name }
+      grouped = all.group_by { |p| p.client.name }
       grand_total = Money.new(0)
 
       grouped.each do |client_name, receipts|
-        valid_receipts = receipts.select { |p| p.amount.cents > 0 && !p.auto_applied_credit? }
+        valid_receipts = receipts.select { |p| p.amount.cents.positive? && !p.auto_applied_credit? }
         next if valid_receipts.empty?
 
         puts "\n#{pastel&.bold(client_name) || client_name}'s receipts:"
         client_total = Money.new(0)
 
         # Split receipts by whether they have a date or not
-        dated_receipts = valid_receipts.select { |p| p.date }
-        undated_receipts = valid_receipts.reject { |p| p.date }
+        dated_receipts = valid_receipts.select(&:date)
+        undated_receipts = valid_receipts.reject(&:date)
 
         # Group by month and year
         receipts_by_month = dated_receipts.group_by { |p| p.date.strftime("%B %Y") }
@@ -86,7 +86,7 @@ module Smedge
           month_receipts.each_with_index do |receipt, index|
             rows << [
               index + 1,
-              format_money_in_indian_style(receipt.amount),
+              Smedge::Utils::CurrencyFormatter.format_money_in_indian_style(receipt.amount),
               receipt.date,
               receipt.mode,
               receipt.note
@@ -97,7 +97,7 @@ module Smedge
           table = TTY::Table.new(headers, rows)
           puts table.render(:unicode, padding: [0, 1])
 
-          puts pastel&.yellow("Subtotal: #{format_money_in_indian_style(month_total)}") || "Subtotal: #{format_money_in_indian_style(month_total)}"
+          puts pastel&.yellow("Subtotal: #{Smedge::Utils::CurrencyFormatter.format_money_in_indian_style(month_total)}") || "Subtotal: #{Smedge::Utils::CurrencyFormatter.format_money_in_indian_style(month_total)}"
           client_total += month_total
         end
 
@@ -112,7 +112,7 @@ module Smedge
           undated_receipts.each_with_index do |receipt, index|
             rows << [
               index + 1,
-              format_money_in_indian_style(receipt.amount),
+              Smedge::Utils::CurrencyFormatter.format_money_in_indian_style(receipt.amount),
               "N/A",
               receipt.mode,
               receipt.note
@@ -123,15 +123,15 @@ module Smedge
           table = TTY::Table.new(headers, rows)
           puts table.render(:unicode, padding: [0, 1])
 
-          puts pastel&.yellow("Subtotal (Pending): #{format_money_in_indian_style(pending_total)}") || "Subtotal (Pending): #{format_money_in_indian_style(pending_total)}"
+          puts pastel&.yellow("Subtotal (Pending): #{Smedge::Utils::CurrencyFormatter.format_money_in_indian_style(pending_total)}") || "Subtotal (Pending): #{Smedge::Utils::CurrencyFormatter.format_money_in_indian_style(pending_total)}"
           client_total += pending_total
         end
 
-        puts pastel&.green("\n#{client_name} Total: #{format_money_in_indian_style(client_total)}") || "\n#{client_name} Total: #{format_money_in_indian_style(client_total)}"
+        puts pastel&.green("\n#{client_name} Total: #{Smedge::Utils::CurrencyFormatter.format_money_in_indian_style(client_total)}") || "\n#{client_name} Total: #{Smedge::Utils::CurrencyFormatter.format_money_in_indian_style(client_total)}"
         grand_total += client_total
       end
 
-      puts pastel&.magenta("\nGrand Total: #{format_money_in_indian_style(grand_total)}") || "\nGrand Total: #{format_money_in_indian_style(grand_total)}"
+      puts pastel&.magenta("\nGrand Total: #{Smedge::Utils::CurrencyFormatter.format_money_in_indian_style(grand_total)}") || "\nGrand Total: #{Smedge::Utils::CurrencyFormatter.format_money_in_indian_style(grand_total)}"
     end
   end
 end

@@ -20,25 +20,25 @@ module Smedge
     # Initialize class instance variable
     @daily_order_count = Hash.new(0)
 
-    sig { returns(Integer) }
+    sig { returns(String) }
     attr_accessor :order_id
 
-    sig { returns(Date) }
+    sig { returns(T.nilable(Date)) }
     attr_accessor :date
 
     sig { returns(Client) }
     attr_accessor :client
 
-    sig { returns(Array) }
+    sig { returns(T::Array[OrderItem]) }
     attr_accessor :items
 
-    sig { returns(Money) }
+    sig { returns(T::Array[Income]) }
     attr_accessor :income
 
     sig { returns(Hash) }
     attr_accessor :status_flags
 
-    sig { returns(Integer) }
+    sig { returns(Money) }
     attr_accessor :discount
 
     sig { params(date: String, client: Client, discount: Integer).void }
@@ -46,8 +46,8 @@ module Smedge
       @date = Utils::DateParser.parse(date)
       @client = client
       @discount = Utils::CurrencyFormatter.new_money(discount)
-      @items = []
-      @income = []
+      @items = T.let([], T::Array[OrderItem])
+      @income = T.let([], T::Array[Income])
       generate_order_id
       @status_flags = {
         awaiting_design: false,
@@ -121,7 +121,7 @@ module Smedge
       print pastel.white("Date: ")
       print pastel.on_blue("#{@date.strftime("%d-%b-%Y")} ")
       print pastel.white("Client: ")
-      print pastel.on_blue("#{client.name}")
+      print pastel.on_blue(client.name.to_s)
       print "\n\n"
       return puts "No order items" if @items.empty?
 

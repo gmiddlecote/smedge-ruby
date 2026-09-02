@@ -3,9 +3,8 @@
 # smedge.rb
 
 require "bundler/setup"
-Bundler.require('development')
+Bundler.require("development")
 require "sorbet-runtime"
-require "sequel"
 
 require_relative "smedge/version"
 require_relative "smedge/order"
@@ -18,13 +17,13 @@ require_relative "smedge/utils/currency_formatter"
 require_relative "smedge/utils/date_parse"
 require_relative "smedge/utils/display_helper"
 require_relative "smedge/utils/load_data"
-require_relative "smedge/utils/db"
 
 # setup localization
 I18n.available_locales = %i[en]
 I18n.enforce_available_locales = true
 I18n.locale = :en
 Money.rounding_mode = BigDecimal::ROUND_HALF_UP
+Money.default_currency = Money::Currency.new("INR")
 Money.default_formatting_rules = {
   symbol: true,
   thousands_separator: ",",

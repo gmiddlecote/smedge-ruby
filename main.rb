@@ -13,13 +13,7 @@ require_relative "lib/smedge/utils/display_helper"
 require_relative "lib/smedge/utils/load_data"
 
 def main
-  include Smedge::Utils::CurrencyFormatter
-  include Smedge::Utils::DisplayHelper
-
   pastel = Pastel.new
-
-  puts Smedge::Db.db.inspect # Should show Sequel database object
-  Smedge::Db.init_db # Should create tables without errors
 
   options = {}
   OptionParser.new do |opts|
@@ -42,7 +36,6 @@ def main
   Smedge::Utils::DisplayHelper.print_divider
 
   # Print Receipts from Clients
-  puts options[:client_name]
   Smedge::Transaction.display_income_and_expense_by_month(pastel: pastel, client_name: options[:client_name])
 
   # Print Orders from Clients
@@ -69,10 +62,10 @@ def main
     order.display_order
     # puts pastel.cyan("Status: #{order.display_flags}\n")
 
-    Smedge::Order.print_available_credit(client, "Before Order")
+    Smedge::Utils::DisplayHelper.print_available_credit(client, "Before Order")
     order.apply_client_credit
-    Smedge::Order.print_balance_due(order)
-    Smedge::Order.print_available_credit(client, "After Order")
+    Smedge::Utils::DisplayHelper.print_balance_due(order)
+    Smedge::Utils::DisplayHelper.print_available_credit(client, "After Order")
   end
 
   Smedge::Utils::DisplayHelper.print_divider

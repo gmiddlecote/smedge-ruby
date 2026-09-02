@@ -7,7 +7,7 @@ module Smedge
   class Transaction
     extend T::Sig
 
-    sig { returns(Date) }
+    sig { returns(T.nilable(Date)) }
     attr_accessor :date
 
     sig { returns(Money) }
@@ -48,8 +48,8 @@ module Smedge
       grouped.sort_by { |month_year, _| Date.strptime(month_year, "%B %Y") }.each do |month_year, records|
         puts pastel&.on_bright_red("\n#{month_year}") || "\n#{month_year}"
 
-        income = records.select { |r| r.is_a?(Income) && r.amount.cents > 0 }
-        expense = records.select { |r| r.is_a?(Expense) && r.amount.cents > 0 }
+        income = records.select { |r| r.is_a?(Income) && r.amount.cents.positive? }
+        expense = records.select { |r| r.is_a?(Expense) && r.amount.cents.positive? }
 
         income_total = T.let(Money.new(0), Money)
         expense_total = T.let(Money.new(0), Money)

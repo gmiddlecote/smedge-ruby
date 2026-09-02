@@ -24,7 +24,7 @@ module Smedge
         amount = Money.new(amount) if amount.is_a?(Integer)
 
         amount_with_cents = amount.cents.to_f / 100.0
-        int, decimal = ("%.2f" % amount_with_cents).split(".")
+        int, decimal = format("%.2f", amount_with_cents).split(".")
 
         int = T.must(int).reverse.gsub(/(\d{3})(?=\d)/, '\\1,').reverse
         int = int.gsub(/(\d+),(\d{2})$/, '\\1,\\2')

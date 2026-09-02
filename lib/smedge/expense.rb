@@ -6,19 +6,17 @@ require_relative "utils/currency_formatter"
 
 # module Expense
 module Smedge
-  include Smedge::Utils::CurrencyFormatter
-
   # Expense Class
   class Expense < Transaction
-    @@all = []
+    class << self
+      attr_reader :all
+    end
+
+    @all = []
 
     def initialize(date:, amount:, mode:, note:, client: nil)
       super(date, amount, mode, note, client)
-      @@all << self
-    end
-
-    def self.all
-      @@all
+      self.class.all << self
     end
   end
 end
