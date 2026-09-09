@@ -1,10 +1,15 @@
 <%# Customer page: summary cards, payment/expense tables and credit flow. %>
 <% balance = @client.available_credit - @client.total_debits %>
 
-<h1><%= h(@client.name) %></h1>
+<h1><%= h(@client.name) %> <a class="muted" style="font-size: 0.5em; text-decoration: none;" href="/clients">← Back to Clients</a></h1>
 <% if @client.email %><p class="muted"><%= h(@client.email) %></p><% end %>
 
+<div style="margin-bottom: 20px;">
+  <a class="button" href="/clients/<%= @client.id %>/export">Download Statement (CSV)</a>
+</div>
+
 <div class="cards">
+
   <div class="card">
     <div class="card-label">Available Credit</div>
     <div class="card-value"><%= money(@client.available_credit) %></div>
@@ -23,7 +28,12 @@
   </div>
 </div>
 
+<div style="margin: 20px 0;">
+  <a class="button" href="<%= record_payment_href(@client) %>">Record payment for <%= h(@client.name) %></a>
+</div>
+
 <h2>Payments (Income)</h2>
+
 <% if @client.credits.empty? %>
   <p class="muted">No payments recorded.</p>
 <% else %>
@@ -68,18 +78,39 @@
 <% end %>
 
 <h2>Orders</h2>
-<a class="button" href="<%= record_payment_href(@client) %>">Record payment for <%= h(@client.name) %></a>
 <% if @credit_flow.empty? %>
   <p class="muted">No orders for this customer yet.</p>
 <% else %>
-  <% @credit_flow.each do |entry| %>
-    <div class="receipt">
-      <%= erb :_order, locals: { order: entry[:order] } %>
-      <p class="muted">
-        Available Credit before order: <strong><%= money(entry[:credit_before]) %></strong> |
-        Balance Due: <strong><%= money(entry[:balance_due]) %></strong> |
-        Available Credit after order: <strong><%= money(entry[:credit_after]) %></strong>
-      </p>
-    </div>
-  <% end %>
+  <table class="data wide">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Date</th>
+        <th>Total</th>
+        <th>Balance Due</th>
+        <th>Credit Flow</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% @credit_flow.each do |entry| %>
+        <tr style="cursor: pointer;" onclick="window.location='/orders/<%= entry[:order].id %>'">
+          <td><%= entry[:order].order_id %></td>
+          <td><%= fmt_date(entry[:order].date) %></td>
+          <td class="num"><%= money(entry[:order].total) %></td>
+          <td class="num <%= "negative" if entry[:balance_due].positive? %>">
+            <%= money(entry[:balance_due]) %>
+            <% if entry[:balance_due].positive? %>
+              <span style="font-size: 0.7em; padding: 2px 4px; background: #fee2e2; color: #b91c1c; border-radius: 4px; margin-left: 5px;">Due</span>
+            <% else %>
+              <span style="font-size: 0.7em; padding: 2px 4px; background: #dcfce7; color: #15803d; border-radius: 4px; margin-left: 5px;">Paid</span>
+            <% end %>
+          </td>
+
+          <td class="muted" style="font-size: 0.9em;">
+            <%= money(entry[:credit_before]) %> → <%= money(entry[:credit_after]) %>
+          </td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
 <% end %>

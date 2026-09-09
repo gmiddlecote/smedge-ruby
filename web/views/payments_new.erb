@@ -37,11 +37,11 @@
   </div>
 
   <div class="field">
-    <label for="order_ref">Apply to a sale (optional)</label>
-    <select id="order_ref" name="order_ref">
+    <label for="order_id">Apply to a sale (optional)</label>
+    <select id="order_id" name="order_id">
       <option value="">Account credit (no sale)</option>
       <% @orders.sort_by(&:date).each do |order| %>
-        <option value="<%= order.order_id %>" <%= "selected" if @form && @form["order_ref"] == order.order_id %>>
+        <option value="<%= order.id %>" <%= "selected" if @form && @form["order_id"] == order.id.to_s %>>
           <%= order.order_id %> - <%= order.client.name %> - <%= money(order.total_amount_after_discount) %>
         </option>
       <% end %>

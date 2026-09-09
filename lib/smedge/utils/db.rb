@@ -67,6 +67,25 @@ module Smedge
         Integer :quantity, null: false
         Integer :rate_paise, null: false
       end
+
+      # Migration: Convert order_ref from String to Integer foreign key for strict linking
+      if db[:transactions].columns.include?(:order_ref)
+        # Create a temporary column to migrate data safely
+        db.alter_table(:transactions) { add_column :order_id_int, Integer }
+        
+        # Convert "ORD-123" style refs to actual IDs if possible, or leave as is
+        # Note: In this app, order_ref was often just the Order ID string.
+        db[:transactions].each do |row|
+          ref = row[:order_ref].to_s
+          # Extract digits from "ORD-123" or just take "123"
+          id = ref.scan(/\d+/).first&.to_i
+          db[:transactions].where(id: row[:id]).update(order_id_int: id) if id
+        end
+        
+        db.alter_table(:transactions) { drop_column :order_ref }
+        db.alter_table(:transactions) { rename_column :order_id_int, :order_id }
+        db.alter_table(:transactions) { add_foreign_key :order_id, :orders, on_delete: :set_null }
+      end
     end
 
     sig { void }
@@ -75,11 +94,66 @@ module Smedge
       init_db
     end
 
-    sig { returns(T::Array[Client]) }
-    def load_clients
-      db[:clients].order(:id).all.map do |row|
+    sig { params(id: Integer).returns(T.nilable[Client]) }
+    def find_client(id)
+      row = db[:clients].where(id: id).first
+      return unless row
+      Client.new(row[:name], row[:email], row[:id])
+    end
+
+    sig { params(client_id: Integer).returns(T::Array[Order]) }
+    def orders_for_client(client_id)
+      client = find_client(client_id)
+      return [] unless client
+      
+      db[:orders].where(client_id: client_id).order(:id).map do |row|
+        order = Order.new(row[:date].strftime("%d-%m-%Y"), client, row[:discount_paise])
+        db[:order_items].where(order_id: row[:id]).order(:id).each do |item_row|
+          item = OrderItem.new(item_row[:description], item_row[:quantity])
+          item.setrate(item_row[:rate_paise])
+          order.add_item(item)
+        end
+        order
+      end
+    end
+
+    sig { params(client_id: Integer).returns(T::Array[T.untyped]) }
+    def transactions_for_client(client_id)
+      client = find_client(client_id)
+      return [] unless client
+
+      db[:transactions].where(client_id: client_id).order(:id).map do |row|
+        date = row[:date]&.strftime("%d-%m-%Y")
+        if row[:type] == "income"
+          Income.new(client: client, amount: row[:amount_paise], mode: row[:mode], note: row[:note], date: date, order_id: row[:order_id])
+        else
+          Expense.new(client: client, amount: row[:amount_paise], mode: row[:mode], note: row[:note], date: date)
+        end
+      end
+    end
+
+    sig { params(limit: Integer, offset: Integer).returns(T::Array[Client]) }
+    def load_clients_paginated(limit:, offset:)
+      db[:clients].order(:id).limit(limit).offset(offset).all.map do |row|
         Client.new(row[:name], row[:email], row[:id])
       end
+    end
+
+    sig { params(id: Integer).returns(T.nilable[Order]) }
+    def find_order(id)
+      row = db[:orders].where(id: id).first
+      return unless row
+      
+      client = find_client(row[:client_id])
+      return unless client
+
+      order = Order.new(row[:date].strftime("%d-%m-%Y"), client, row[:discount_paise])
+      db[:order_items].where(order_id: row[:id]).order(:id).each do |item_row|
+        item = OrderItem.new(item_row[:description], item_row[:quantity])
+        item.setrate(item_row[:rate_paise])
+        order.add_item(item)
+      end
+      order
     end
 
     # Load all transaction rows and attach each to its client as an Income
@@ -213,15 +287,15 @@ module Smedge
         date: String,
         mode: String,
         note: T.nilable(String),
-        order_ref: T.nilable(String)
+        order_id: T.nilable(Integer)
       ).void
     end
-    # Record money received (an income transaction). Pass order_ref (an order id
-    # string) to link the payment to a specific order, or nil for account credit.
-    def create_transaction(client:, amount_paise:, date:, mode:, note: nil, order_ref: nil)
+    # Record money received (an income transaction). Pass order_id (an order primary key)
+    # to link the payment to a specific order, or nil for account credit.
+    def create_transaction(client:, amount_paise:, date:, mode:, note: nil, order_id: nil)
       txn_date = Utils::DateParser.parse(date)
       raise Smedge::Error, "Invalid payment date: #{date.inspect}" unless txn_date
-
+      
       db[:transactions].insert(
         client_id: T.must(client.id),
         type: "income",
@@ -230,9 +304,10 @@ module Smedge
         date: txn_date,
         mode: mode,
         note: note,
-        order_ref: order_ref
+        order_id: order_id
       )
     end
+
 
     sig { params(yaml_file_path: String).void }
     # (Re)build the database from a YAML seed file. Resets the schema first, so

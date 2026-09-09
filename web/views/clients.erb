@@ -1,6 +1,11 @@
 <h1>Customers</h1>
 
+<div style="margin-bottom: 20px;">
+  <input type="text" id="clientSearch" placeholder="Search customers..." onkeyup="filterClients()" style="padding: 8px; width: 300px; border: 1px solid #ccc; border-radius: 4px;">
+</div>
+
 <% if @clients.empty? %>
+
   <p>No customers yet. <a href="/customers/new">Add one</a>.</p>
 <% else %>
   <table class="data wide">
@@ -14,8 +19,9 @@
         <th>Orders</th>
       </tr>
     </thead>
-    <tbody>
+    <tbody id="clientTableBody">
       <% @clients.each do |client| %>
+
         <% balance = client.available_credit - client.total_debits %>
         <tr>
           <td><%= link_to_client(client) %></td>
@@ -29,3 +35,33 @@
     </tbody>
   </table>
 <% end %>
+
+<% if @total_pages && @total_pages > 1 %>
+  <div class="pagination">
+    <% if @current_page > 1 %>
+      <a href="/clients?page=<%= @current_page - 1 %>">Previous</a>
+    <% end %>
+    <span>Page <%= @current_page %> of <%= @total_pages %></span>
+    <% if @current_page < @total_pages %>
+      <a href="/clients?page=<%= @current_page + 1 %>">Next</a>
+    <% end %>
+  </div>
+<% end %>
+
+<script>
+
+function filterClients() {
+  const input = document.getElementById('clientSearch');
+  const filter = input.value.toLowerCase();
+  const tbody = document.getElementById('clientTableBody');
+  const rows = tbody.getElementsByTagName('tr');
+
+  for (let i = 0; i < rows.length; i++) {
+    const nameCell = rows[i].getElementsByTagName('td')[0];
+    if (nameCell) {
+      const text = nameCell.textContent || nameCell.innerText;
+      rows[i].style.display = text.toLowerCase().indexOf(filter) > -1 ? '' : 'none';
+    }
+  }
+}
+</script>

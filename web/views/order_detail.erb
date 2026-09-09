@@ -1,0 +1,72 @@
+<%# Order Detail Page: itemized view and associated payments. %>
+<h1 style="display: flex; align-items: center; gap: 10px;">
+  Order <%= @order.order_id %>
+  <a class="muted" style="font-size: 0.5em; text-decoration: none;" href="/clients/<%= @order.client.id %>">← Back to Client</a>
+</h1>
+
+<div class="cards">
+  <div class="card">
+    <div class="card-label">Date</div>
+    <div class="card-value"><%= fmt_date(@order.date) %></div>
+  </div>
+  <div class="card">
+    <div class="card-label">Total Amount</div>
+    <div class="card-value"><%= money(@order.total) %></div>
+  </div>
+  <div class="card">
+    <div class="card-label">Discount</div>
+    <div class="card-value negative"><%= money(@order.discount) %></div>
+  </div>
+  <div class="card">
+    <div class="card-label">Balance Due</div>
+    <div class="card-value <%= "negative" if @order.balance_due.positive? %>"><%= money(@order.balance_due) %></div>
+  </div>
+</div>
+
+<h2>Itemized List</h2>
+<table class="data wide">
+  <thead>
+    <tr>
+      <th>Description</th>
+      <th class="num">Quantity</th>
+      <th class="num">Rate</th>
+      <th class="num">Total</th>
+    </tr>
+  </thead>
+  <tbody>
+    <% @order.items.each do |item| %>
+      <tr>
+        <td><%= h(item.description) %></td>
+        <td class="num"><%= item.quantity %></td>
+        <td class="num"><%= money(item.rate) %></td>
+        <td class="num"><%= money(item.total) %></td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>
+
+<h2>Linked Payments</h2>
+<% if @payments.empty? %>
+  <p class="muted">No payments specifically linked to this order.</p>
+<% else %>
+  <table class="data">
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>Amount</th>
+        <th>Mode</th>
+        <th>Note</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% @payments.each do |payment| %>
+        <tr>
+          <td><%= fmt_date(payment.date) %></td>
+          <td class="num positive"><%= money(payment.amount) %></td>
+          <td><%= h(payment.mode.to_s) %></td>
+          <td><%= h(payment.note.to_s) %></td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+<% end %>

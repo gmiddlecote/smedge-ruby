@@ -43,18 +43,59 @@ module Smedge
 
     # List all customers.
     get "/clients" do
+      page = (params["page"] || 1).to_i
+      per_page = 20
+      offset = (page - 1) * per_page
+      
+      @clients = Smedge::Db.load_clients_paginated(limit: per_page, offset: offset)
+      @total_clients = Smedge::Db.count_clients
+      @current_page = page
+      @total_pages = (@total_clients.to_f / per_page).ceil
+      
       erb :clients
     end
 
     # Customer detail: their payments, expenses and per-order credit flow.
     get "/clients/:id" do
-      @client = @clients.find { |client| client.id.to_s == params["id"] }
+      @client = Smedge::Db.find_client(params["id"].to_i)
       halt 404, "Client not found" unless @client
       halt 404, "Client has no id in database" unless @client.id
 
-      @client_orders = @orders.select { |order| order.client.id == @client.id }
+      @client_orders = Smedge::Db.orders_for_client(@client.id)
+      
+      # Manually attach transactions to the client object for the view
+      transactions = Smedge::Db.transactions_for_client(@client.id)
+      transactions.each do |txn|
+        if txn.is_a?(Smedge::Income)
+          @client.add_credit(txn)
+        elsif txn.is_a?(Smedge::Expense)
+          @client.add_debit(txn)
+        end
+      end
+      
       @credit_flow = credit_flow(@client)
       erb :client
+    end
+
+    # Order detail: itemized list and associated payments.
+    get "/orders/:id" do
+      @order = Smedge::Db.find_order(params["id"].to_i)
+      halt 404, "Order not found" unless @order
+      
+      # Find payments explicitly linked to this order
+      @payments = Smedge::Db.db[:transactions]
+                               .where(order_id: @order.id, type: "income")
+                               .all.map do |row|
+        Smedge::Income.new(
+          client: @order.client,
+          amount: row[:amount_paise],
+          mode: row[:mode],
+          note: row[:note],
+          date: row[:date]&.strftime("%d-%m-%Y"),
+          order_id: row[:id]
+        )
+      end
+      erb :order_detail
     end
 
     # List all orders, newest first.
@@ -119,32 +160,32 @@ module Smedge
     end
 
     # Record money received: rupee input is converted to paise, then persisted
-    # as an income transaction, optionally linked to a sale via order_ref.
+    # as an income transaction, optionally linked to a sale via order_id.
     post "/payments" do
       client_name = params["client"].to_s.strip
       raise Smedge::Error, "Customer name is required" if client_name.empty?
-
+      
       amount = params["amount"].to_s.strip
       raise Smedge::Error, "Payment amount is required" if amount.empty?
-
+      
       amount_paise = rupees_to_paise(amount)
       raise Smedge::Error, "Payment amount must be more than 0" if amount_paise <= 0
-
+      
       date = params["date"].to_s.strip
       raise Smedge::Error, "Payment date is required" if date.empty?
-
+      
       date = Date.parse(date).strftime("%d-%m-%Y")
       mode = params["mode"].to_s.strip
       mode = "bank" if mode.empty?
       note = params["note"].to_s.strip
       note = nil if note.empty?
-      order_ref = params["order_ref"].to_s.strip
-      order_ref = nil if order_ref.empty?
-
+      order_id = params["order_id"].to_s.strip
+      order_id = (order_id.empty? ? nil : order_id.to_i)
+      
       client, = Smedge::Db.find_or_create_client(client_name)
-      Smedge::Db.create_transaction(client: client, amount_paise: amount_paise, date: date, mode: mode, note: note, order_ref: order_ref)
+      Smedge::Db.create_transaction(client: client, amount_paise: amount_paise, date: date, mode: mode, note: note, order_id: order_id)
       message = "Payment recorded: #{money(Money.new(amount_paise))} for #{client.name}"
-      message += " against #{order_ref}" if order_ref
+      message += " against order ##{order_id}" if order_id
       session[:notice] = message
       redirect "/clients/#{client.id}"
     rescue Smedge::Error, ArgumentError => e
@@ -152,6 +193,27 @@ module Smedge
       @form = params
       erb :payments_new
     end
+
+    # Export client statement to CSV
+    get "/clients/:id/export" do
+      @client = Smedge::Db.find_client(params["id"].to_i)
+      halt 404, "Client not found" unless @client
+      
+      content_type "text/csv"
+      attachment "statement_#{@client.name.downcase.gsub(' ', '_')}.csv"
+      
+      csv_string = "Date,Type,Amount,Mode,Note\n"
+      
+      # Credits (Income)
+      Smedge::Db.transactions_for_client(@client.id).each do |txn|
+        type = txn.is_a?(Smedge::Income) ? "Payment" : "Debit"
+        amount = money(txn.amount)
+        csv_string << "#{txn.date},#{type},#{amount},#{txn.mode},#{txn.note}\n"
+      end
+      
+      csv_string
+    end
+
 
     not_found do
       status 404
