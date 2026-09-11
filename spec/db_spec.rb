@@ -86,10 +86,11 @@ RSpec.describe Smedge::Db do
     order = Smedge::Db.create_order(date: "05-09-2026", client: client, discount: 5000,
                                     items: [{ description: "Speaker", quantity: 2, rate: 150_000 }])
     Smedge::Db.create_transaction(client: client, amount_paise: 100_000, date: "05-09-2026",
-                                  mode: "bank", order_ref: order.order_id)
+                                   mode: "bank", order_id: order.id)
+
 
     expect(Smedge::Db.db[:transactions].count).to eq(1)
-    expect(Smedge::Db.db[:transactions].first[:order_ref]).to eq(order.order_id)
+    expect(Smedge::Db.db[:transactions].first[:order_id]).to eq(order.id)
 
     Smedge::Income.reset_all
     Smedge::Expense.reset_all
@@ -104,7 +105,7 @@ RSpec.describe Smedge::Db do
     Smedge::Db.create_transaction(client: client, amount_paise: 50_000, date: "05-09-2026",
                                   mode: "cash", note: "Advance")
 
-    expect(Smedge::Db.db[:transactions].first[:order_ref]).to be_nil
+    expect(Smedge::Db.db[:transactions].first[:order_id]).to be_nil
 
     Smedge::Income.reset_all
     Smedge::Expense.reset_all

@@ -5,8 +5,8 @@ Bundler.require(:development, :web)
 require "sinatra/base"
 require "bigdecimal"
 require "securerandom"
-
 require_relative "../lib/smedge"
+require_relative "../lib/smedge/services"
 
 module Smedge
   # Web interface for Smedge: dashboard, customers, orders, sales and payments.
@@ -73,7 +73,7 @@ module Smedge
         end
       end
       
-      @credit_flow = credit_flow(@client)
+      @credit_flow = Smedge::Services.calculate_credit_flow(@client, @client_orders)
       erb :client
     end
 
@@ -133,17 +133,17 @@ module Smedge
     post "/sales" do
       client_name = params["client"].to_s.strip
       raise Smedge::Error, "Customer name is required" if client_name.empty?
-
+      
       date = params["date"].to_s.strip
       raise Smedge::Error, "Sale date is required" if date.empty?
-
+      
       date = Date.parse(date).strftime("%d-%m-%Y")
-      items = build_items(params["item"])
+      items = Smedge::Services.build_items(params["item"])
       raise Smedge::Error, "Add at least one item" if items.empty?
-
+      
       discount = params["discount"].to_s.strip
       discount_paise = discount.empty? ? 0 : rupees_to_paise(discount)
-
+      
       client, = Smedge::Db.find_or_create_client(client_name)
       order = Smedge::Db.create_order(date: date, client: client, discount: discount_paise, items: items)
       session[:notice] = "Sale #{order.order_id} added for #{client.name}"
@@ -153,6 +153,7 @@ module Smedge
       @form = params
       erb :sales_new
     end
+
 
     get "/payments/new" do
       @client_name = params["client"]
@@ -221,6 +222,12 @@ module Smedge
     end
 
     helpers do
+      # Global error handler for Smedge errors
+      error Smedge::Error do
+        @error = env['sinatra.error'].message
+        erb :error # Or a generic error view
+      end
+
       # Drop in-memory records and reload from the database, so one request
       # never carries over state from another (Income/Expense live in class-level
       # arrays and must be reset first).
@@ -254,41 +261,15 @@ module Smedge
         end
       end
 
-      # For each of a client's orders, show the available credit before and after
-      # applying what is needed to cover the order's balance.
-      def credit_flow(client)
-        running = client.available_credit
-        @orders.select { |order| order.client.id == client.id }.map do |order|
-          balance = order.balance_due
-          used = [balance, running].min
-          before = running
-          running -= used
-          { order: order, credit_before: before, credit_after: running, balance_due: balance }
-        end
-      end
+    # ... [Keep existing helpers] ...
+    # Delete the old build_items and credit_flow methods
+    # def build_items(payload)
+    # ...
+    # end
+    # def credit_flow(client)
+    # ...
+    # end
 
-      # Coerce the repeated item[] form fields into item hashes, skipping completely
-      # empty rows and converting rupee rates to paise.
-      def build_items(payload)
-        return [] unless payload.is_a?(Hash)
-
-        descriptions = Array(payload["description"])
-        quantities = Array(payload["quantity"])
-        rates = Array(payload["rate"])
-
-        descriptions.each_index.filter_map do |i|
-          description = descriptions[i].to_s.strip
-          quantity = quantities[i].to_s
-          rate = rates[i].to_s
-          next if description.empty? && quantity.empty? && rate.empty?
-
-          raise Smedge::Error, "Item ##{i + 1}: description is required" if description.empty?
-
-          { description: description, quantity: Integer(quantity), rate: rupees_to_paise(rate) }
-        end
-      rescue ArgumentError
-        raise Smedge::Error, "Item quantity must be a whole number"
-      end
 
       # Convert a user-entered rupee string ("50", "1500.25") to integer paise.
       def rupees_to_paise(value)

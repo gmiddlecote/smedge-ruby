@@ -96,7 +96,7 @@ RSpec.describe Smedge::Web do
     expect(Smedge::Db.db[:transactions].count).to eq(27)
     transaction = Smedge::Db.db[:transactions].order(:id).last
     expect(transaction[:amount_paise]).to eq(100_000)
-    expect(transaction[:order_ref]).to be_nil
+    expect(transaction[:order_id]).to be_nil
   end
 
   it "records a payment against a sale via POST" do
@@ -107,9 +107,9 @@ RSpec.describe Smedge::Web do
     order = Smedge::Db.db[:orders].order(:id).last
     order_id = "ORD-05092026-001"
 
-    post "/payments", client: "Ron", amount: "1000.00", date: "2026-09-06", mode: "bank", order_ref: order_id
+    post "/payments", client: "Ron", amount: "1000.00", date: "2026-09-06", mode: "bank", order_id: order.id
     expect(last_response.status).to eq(302)
-    expect(Smedge::Db.db[:transactions].where(order_ref: order_id).count).to eq(1)
+    expect(Smedge::Db.db[:transactions].where(order_id: order.id).count).to eq(1)
     expect(order).not_to be_nil
   end
 

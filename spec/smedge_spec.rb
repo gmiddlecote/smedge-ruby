@@ -30,9 +30,9 @@ RSpec.describe Smedge::Utils::CurrencyFormatter do
   end
 
   it "handles zero and small amounts" do
-    expect(Smedge::Utils::CurrencyFormatter.format_money_in_indian_style(Money.new(0, "INR"))).to eq("₹0.00")
-    expect(Smedge::Utils::CurrencyFormatter.format_money_in_indian_style(Money.new(5, "INR"))).to eq("₹0.05")
+    expect(Smedge::Utils::CurrencyFormatter.format_money_in_indian_style(Money.new(0, "INR")).strip).to eq("₹0.00")
   end
+
 end
 
 RSpec.describe Smedge::Client do

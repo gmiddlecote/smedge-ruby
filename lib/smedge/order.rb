@@ -24,6 +24,9 @@ module Smedge
     sig { returns(String) }
     attr_accessor :order_id
 
+    sig { returns(Integer) }
+    attr_accessor :id
+
     sig { returns(T.nilable(Date)) }
     attr_accessor :date
 
