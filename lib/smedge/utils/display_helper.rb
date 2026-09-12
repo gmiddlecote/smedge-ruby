@@ -68,7 +68,7 @@ module Smedge
 
         centered_lines = split_lines.map do |line|
           padding = (width - line.length) / 2
-          " " * padding + line
+          (" " * padding) + line
         end.join("\n")
 
         version_line = "Version #{Smedge::VERSION}".rjust(width)

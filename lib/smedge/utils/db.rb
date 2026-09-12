@@ -19,7 +19,14 @@ module Smedge
 
     sig { returns(Sequel::Database) }
     def db
-      @db ||= T.let(Sequel.sqlite(db_path), Sequel::Database)
+      path = db_path
+      if defined?(@db_path) && @db_path != path && defined?(@db)
+        @db.disconnect
+        @db = nil
+      end
+
+      @db_path = path
+      @db ||= T.let(Sequel.sqlite(path), Sequel::Database)
     end
 
     sig { returns(String) }
@@ -37,24 +44,6 @@ module Smedge
         String :email
       end
 
-      db.create_table? :transactions do
-        primary_key :id
-        foreign_key :client_id, :clients, on_delete: :cascade
-        String :type, null: false # 'income' or 'expense'
-        Integer :amount_paise, null: false
-        String :currency, null: false, default: "INR"
-        Date :date
-        String :mode
-        String :note
-        String :order_ref
-      end
-      db[:transactions].add_index :client_id
-      db[:transactions].add_index :order_id
-
-      db.alter_table(:transactions) { add_column :order_ref, String } unless db[:transactions].columns.include?(:order_ref)
-
-      migrate_cents_to_paise!
-
       db.create_table? :orders do
         primary_key :id
         foreign_key :client_id, :clients, on_delete: :cascade
@@ -70,26 +59,26 @@ module Smedge
         Integer :rate_paise, null: false
       end
 
-      # Migration: Convert order_ref from String to Integer foreign key for strict linking
-      if db[:transactions].columns.include?(:order_ref) && !db[:transactions].columns.include?(:order_id)
-        # Create a temporary column to migrate data safely
-        db.alter_table(:transactions) { add_column :order_id_int, Integer }
-        
-        # Convert "ORD-123" style refs to actual IDs if possible, or leave as is
-        db[:transactions].each do |row|
-          ref = row[:order_ref].to_s
-          id = ref.scan(/\d+/).first&.to_i
-          db[:transactions].where(id: row[:id]).update(order_id_int: id) if id
-        end
-        
-        db.alter_table(:transactions) { drop_column :order_ref }
-        db.alter_table(:transactions) { rename_column :order_id_int, :order_id }
-        # Use basic add_column for foreign key if add_foreign_key is failing in this SQLite version
-        # or ensure it's called within a context that allows it.
-        # Since we renamed the column, it exists. We just need the constraint.
-        # However, SQLite has limited ALTER TABLE support. 
-        # Let's simplify: just ensure the column exists and let the app handle the logic.
+      db.create_table? :transactions do
+        primary_key :id
+        foreign_key :client_id, :clients, on_delete: :cascade
+        Integer :order_id
+        String :type, null: false # 'income' or 'expense'
+        Integer :amount_paise, null: false
+        String :currency, null: false, default: "INR"
+        Date :date
+        String :mode
+        String :note
       end
+
+      transaction_columns = db[:transactions].columns
+      unless transaction_columns.include?(:order_id)
+        db.alter_table(:transactions) { add_column :order_id, Integer }
+      end
+      migrate_order_refs_to_ids! if transaction_columns.include?(:order_ref)
+      add_index_unless_exists(:transactions, :client_id)
+      add_index_unless_exists(:transactions, :order_id)
+      migrate_cents_to_paise!
     end
 
     sig { void }
@@ -103,7 +92,7 @@ module Smedge
       load_clients_paginated(limit: 1000, offset: 0)
     end
 
-    sig { params(id: Integer).returns(T.nilable[Client]) }
+    sig { params(id: Integer).returns(T.nilable(Client)) }
     def find_client(id)
       row = db[:clients].where(id: id).first
       return unless row
@@ -117,6 +106,7 @@ module Smedge
       
       db[:orders].where(client_id: client_id).order(:id).map do |row|
         order = Order.new(row[:date].strftime("%d-%m-%Y"), client, row[:discount_paise])
+        order.id = row[:id]
         db[:order_items].where(order_id: row[:id]).order(:id).each do |item_row|
           item = OrderItem.new(item_row[:description], item_row[:quantity])
           item.setrate(item_row[:rate_paise])
@@ -148,7 +138,12 @@ module Smedge
       end
     end
 
-    sig { params(id: Integer).returns(T.nilable[Order]) }
+    sig { returns(Integer) }
+    def count_clients
+      db[:clients].count
+    end
+
+    sig { params(id: Integer).returns(T.nilable(Order)) }
     def find_order(id)
       row = db[:orders].where(id: id).first
       return unless row
@@ -172,7 +167,7 @@ module Smedge
     def load_transactions(clients)
       by_id = clients.to_h { |client| [T.must(client.id), client] }
 
-      db[:transactions].order(:id).each do |row|
+      db[:transactions].each do |row|
         client = by_id[row[:client_id]]
         next unless client
 
@@ -185,7 +180,7 @@ module Smedge
               mode: row[:mode],
               note: row[:note],
               date: date,
-              order_id: row[:order_ref]
+              order_id: row[:order_id]
             )
           )
         else
@@ -211,7 +206,7 @@ module Smedge
       Smedge::Order.daily_order_count = Hash.new(0)
       by_id = clients.to_h { |client| [T.must(client.id), client] }
 
-      orders = db[:orders].order(:id).all.filter_map do |row|
+      orders = db[:orders].order(:date, :id).all.filter_map do |row|
         client = by_id[row[:client_id]]
         next unless client
 
@@ -225,7 +220,7 @@ module Smedge
         order
       end
 
-      payments_by_order = T.let({}, T::Hash[String, T::Array[Income]])
+      payments_by_order = T.let({}, T::Hash[Integer, T::Array[Income]])
       Income.all.each do |income|
         next if income.order_id.nil?
 
@@ -233,7 +228,9 @@ module Smedge
       end
 
       orders.each do |order|
-        payments = payments_by_order[order.order_id]
+        next unless order.id
+
+        payments = payments_by_order[order.id]
         payments&.each { |income| order.add_payment(income) }
       end
       orders
@@ -281,6 +278,7 @@ module Smedge
           date: order_date,
           discount_paise: order.discount.cents
         )
+        order.id = order_id
         items.each do |item|
           db[:order_items].insert(
             order_id: order_id,
@@ -309,6 +307,12 @@ module Smedge
     def create_transaction(client:, amount_paise:, date:, mode:, note: nil, order_id: nil)
       txn_date = Utils::DateParser.parse(date)
       raise Smedge::Error, "Invalid payment date: #{date.inspect}" unless txn_date
+
+      if order_id
+        order = db[:orders].where(id: order_id).first
+        raise Smedge::Error, "Order not found: #{order_id}" unless order
+        raise Smedge::Error, "Order belongs to a different customer" unless order[:client_id] == client.id
+      end
       
       db[:transactions].insert(
         client_id: T.must(client.id),
@@ -391,6 +395,33 @@ module Smedge
 
           db.alter_table(table) { rename_column old_name, new_name }
         end
+      end
+    end
+
+    sig { params(table: Symbol, column: Symbol).void }
+    def add_index_unless_exists(table, column)
+      indexed_columns = db.indexes(table).values.map { |index| index[:columns] }
+      return if indexed_columns.include?([column])
+
+      db.alter_table(table) { add_index column }
+    end
+
+    sig { void }
+    def migrate_order_refs_to_ids!
+      db[:transactions].where(order_id: nil).exclude(order_ref: nil).each do |transaction|
+        match = /\AORD-(\d{8})-(\d+)\z/.match(transaction[:order_ref])
+        next unless match
+
+        date = Date.strptime(match[1], "%d%m%Y")
+        sequence = match[2].to_i
+        order = db[:orders]
+                  .where(client_id: transaction[:client_id], date: date)
+                  .order(:id)
+                  .offset(sequence - 1)
+                  .first
+        db[:transactions].where(id: transaction[:id]).update(order_id: order[:id]) if order
+      rescue ArgumentError
+        next
       end
     end
 

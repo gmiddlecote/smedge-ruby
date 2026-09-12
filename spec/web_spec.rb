@@ -7,7 +7,7 @@ RSpec.describe Smedge::Web do
   include Rack::Test::Methods
 
   around do |example|
-    original = ENV["SMEDGE_DB"]
+    original = ENV.fetch("SMEDGE_DB", nil)
     ENV["SMEDGE_DB"] = ":memory:"
     Smedge::Db.reset_schema
     Smedge::Db.seed_from_yaml(File.join(__dir__, "..", "orders.yaml"))
@@ -105,11 +105,10 @@ RSpec.describe Smedge::Web do
          date: "2026-09-05",
          item: { description: ["Speaker"], quantity: ["2"], rate: ["1500.00"] }
     order = Smedge::Db.db[:orders].order(:id).last
-    order_id = "ORD-05092026-001"
 
-    post "/payments", client: "Ron", amount: "1000.00", date: "2026-09-06", mode: "bank", order_id: order.id
+    post "/payments", client: "Ron", amount: "1000.00", date: "2026-09-06", mode: "bank", order_id: order[:id]
     expect(last_response.status).to eq(302)
-    expect(Smedge::Db.db[:transactions].where(order_id: order.id).count).to eq(1)
+    expect(Smedge::Db.db[:transactions].where(order_id: order[:id]).count).to eq(1)
     expect(order).not_to be_nil
   end
 

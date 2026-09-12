@@ -3,6 +3,7 @@
 require_relative "lib/smedge/version"
 
 Gem::Specification.new do |spec|
+  spec.metadata["rubygems_mfa_required"] = "true"
   spec.name = "smedge"
   spec.version = Smedge::VERSION
   spec.authors = ["George Middlecote"]

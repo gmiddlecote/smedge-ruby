@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 # typed: strict
 
+require "bigdecimal"
+
 module Smedge
   module Services
     extend T::Sig
@@ -21,10 +23,20 @@ module Smedge
 
         raise Smedge::Error, "Item ##{i + 1}: description is required" if description.empty?
 
-        { description: description, quantity: Integer(quantity), rate: Smedge::Web.rupees_to_paise(rate) }
+        { description: description, quantity: Integer(quantity), rate: rupees_to_paise(rate) }
       end
     rescue ArgumentError
       raise Smedge::Error, "Item quantity must be a whole number"
+    end
+
+    sig { params(value: T.untyped).returns(Integer) }
+    def self.rupees_to_paise(value)
+      value = value.to_s.strip
+      raise Smedge::Error, "Invalid amount: #{value.inspect}" if value.empty?
+
+      (BigDecimal(value) * 100).round
+    rescue ArgumentError
+      raise Smedge::Error, "Invalid amount: #{value.inspect}"
     end
 
     sig { params(client: Client, orders: T::Array[Order]).returns(T::Array[T::Hash[Symbol, T.untyped]]) }

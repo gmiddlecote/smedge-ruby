@@ -96,7 +96,7 @@
         <tr style="cursor: pointer;" onclick="window.location='/orders/<%= entry[:order].id %>'">
           <td><%= entry[:order].order_id %></td>
           <td><%= fmt_date(entry[:order].date) %></td>
-          <td class="num"><%= money(entry[:order].total) %></td>
+          <td class="num"><%= money(entry[:order].total_amount_after_discount) %></td>
           <td class="num <%= "negative" if entry[:balance_due].positive? %>">
             <%= money(entry[:balance_due]) %>
             <% if entry[:balance_due].positive? %>

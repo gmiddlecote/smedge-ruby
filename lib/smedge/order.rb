@@ -24,7 +24,7 @@ module Smedge
     sig { returns(String) }
     attr_accessor :order_id
 
-    sig { returns(Integer) }
+    sig { returns(T.nilable(Integer)) }
     attr_accessor :id
 
     sig { returns(T.nilable(Date)) }
@@ -79,7 +79,10 @@ module Smedge
     # Attach a received payment to this order. Payments linked to another
     # order (or explicitly tagged for a different one) are rejected.
     def add_payment(income)
-      raise Smedge::Error, "Receipt order ID mismatch" if income.order_id && income.order_id != @order_id
+      expected_order_id = id || @order_id
+      if income.order_id && income.order_id != expected_order_id
+        raise Smedge::Error, "Receipt order ID mismatch"
+      end
 
       @income << income
     end

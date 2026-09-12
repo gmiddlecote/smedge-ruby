@@ -24,7 +24,7 @@ module Smedge
           pad_char: T.nilable(String)
         ).returns(String)
       end
-      def self.format_money_in_indian_style(amount, width: 16, pad_char: " ")
+      def self.format_money_in_indian_style(amount, width: nil, pad_char: " ")
         amount = Money.new(amount) if amount.is_a?(Integer)
 
         # Turn a paise amount into a float f of rupees (paise / 100) for formatting.
@@ -37,8 +37,7 @@ module Smedge
 
         formatted_number = "#{int}.#{decimal}"
 
-        effective_width = width || 16
-        padding_length = [0, effective_width - formatted_number.length].max
+        padding_length = width ? [0, width - formatted_number.length].max : 0
         pad = T.must(pad_char)
         padded = "#{pad * padding_length}#{formatted_number}"
 

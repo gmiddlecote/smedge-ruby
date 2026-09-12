@@ -2,7 +2,7 @@
 
 RSpec.describe Smedge::Db do
   around do |example|
-    original = ENV["SMEDGE_DB"]
+    original = ENV.fetch("SMEDGE_DB", nil)
     ENV["SMEDGE_DB"] = ":memory:"
     Smedge::Db.reset_schema
     example.run
@@ -111,6 +111,20 @@ RSpec.describe Smedge::Db do
     Smedge::Expense.reset_all
     Smedge::Db.load_transactions([client])
     expect(client.available_credit).to eq(Money.new(50_000, "INR"))
+  end
+
+  it "rejects a payment linked to a missing or another customer's order" do
+    ron, = Smedge::Db.find_or_create_client("Ron")
+    jane, = Smedge::Db.find_or_create_client("Jane")
+    jane_order = Smedge::Db.create_order(date: "05-09-2026", client: jane, items: [])
+
+    expect do
+      Smedge::Db.create_transaction(client: ron, amount_paise: 100, date: "05-09-2026", mode: "bank", order_id: 999)
+    end.to raise_error(Smedge::Error, /Order not found/)
+
+    expect do
+      Smedge::Db.create_transaction(client: ron, amount_paise: 100, date: "05-09-2026", mode: "bank", order_id: jane_order.id)
+    end.to raise_error(Smedge::Error, /different customer/)
   end
 
   it "rejects an invalid payment date" do

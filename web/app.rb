@@ -61,7 +61,7 @@ module Smedge
       halt 404, "Client not found" unless @client
       halt 404, "Client has no id in database" unless @client.id
 
-      @client_orders = Smedge::Db.orders_for_client(@client.id)
+      @client_orders = @orders.select { |order| order.client.id == @client.id }
       
       # Manually attach transactions to the client object for the view
       transactions = Smedge::Db.transactions_for_client(@client.id)
@@ -92,7 +92,7 @@ module Smedge
           mode: row[:mode],
           note: row[:note],
           date: row[:date]&.strftime("%d-%m-%Y"),
-          order_id: row[:id]
+          order_id: row[:order_id]
         )
       end
       erb :order_detail
@@ -201,7 +201,7 @@ module Smedge
       halt 404, "Client not found" unless @client
       
       content_type "text/csv"
-      attachment "statement_#{@client.name.downcase.gsub(' ', '_')}.csv"
+      attachment "statement_#{@client.name.downcase.gsub(" ", "_")}.csv"
       
       csv_string = "Date,Type,Amount,Mode,Note\n"
       
@@ -224,7 +224,7 @@ module Smedge
     helpers do
       # Global error handler for Smedge errors
       error Smedge::Error do
-        @error = env['sinatra.error'].message
+        @error = env["sinatra.error"].message
         erb :error # Or a generic error view
       end
 
@@ -330,7 +330,7 @@ module Smedge
         max = nice_max(rows.map { |r| [r[:income], r[:expense]].max }.max || 0)
         ticks = 5
 
-        x_at = ->(i) { rows.size == 1 ? pad_left + plot_w / 2 : pad_left + (plot_w * i) / (rows.size - 1) }
+        x_at = ->(i) { rows.size == 1 ? pad_left + (plot_w / 2) : pad_left + ((plot_w * i) / (rows.size - 1)) }
         y_at = ->(value) { pad_top + plot_h - (plot_h * value.to_f / max) }
 
         parts = []
@@ -355,7 +355,7 @@ module Smedge
           parts << %(<text class="chart-x" x="#{x_at.call(i)}" y="#{height - 16}" text-anchor="middle">#{r[:short]}</text>)
         end
 
-        %(<svg id="monthly-chart" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 #{width} #{height}" role="img" aria-label="Monthly income and expense trend">#{parts.join("")}</svg>)
+        %(<svg id="monthly-chart" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 #{width} #{height}" role="img" aria-label="Monthly income and expense trend">#{parts.join}</svg>)
       end
 
       # Invisible circle used as the hover target for the chart tooltip.
