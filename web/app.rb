@@ -4,6 +4,7 @@ require "bundler/setup"
 Bundler.require(:development, :web)
 require "sinatra/base"
 require "bigdecimal"
+require "json"
 require "securerandom"
 require_relative "../lib/smedge"
 
@@ -215,10 +216,60 @@ module Smedge
       csv_string
     end
 
+    # ── Customer-facing JSON API ────────────────────────────────────────────
+    # JSON endpoints for a mobile/partner frontend. Amounts are integers in
+    # paise (1/100 of a rupee) alongside Indian-formatted display strings.
+    #
+    # NOTE: these endpoints are intentionally served from the same Sinatra
+    # process and are NOT authenticated yet — customer auth must be added
+    # before exposing them beyond a trusted network.
+
+    # Client summary: identity plus current credit and debit totals.
+    get "/api/clients/:id" do
+      client = @clients.find { |c| c.id == params["id"].to_i }
+      halt 404 unless client
+
+      json_response(client_payload(client))
+    end
+
+    # Client's order history (newest first) with running balance info.
+    get "/api/clients/:id/orders" do
+      client = @clients.find { |c| c.id == params["id"].to_i }
+      halt 404 unless client
+
+      orders = @orders.select { |order| order.client.id == client.id }
+                      .sort_by(&:date).reverse
+                      .map { |order| order_summary_payload(order) }
+      json_response(orders: orders)
+    end
+
+    # Client's payment statement: every income and expense, newest first.
+    get "/api/clients/:id/payments" do
+      client = @clients.find { |c| c.id == params["id"].to_i }
+      halt 404 unless client
+
+      payments = (client.credits.map { |payment| payment_payload(payment).merge(type: "income") } +
+                  client.debits.map { |payment| payment_payload(payment).merge(type: "expense") })
+                 .sort_by { |payment| payment[:date] || "" }
+                 .reverse
+      json_response(payments: payments)
+    end
+
+    # Full order detail: line items, totals, status flags and linked payments.
+    get "/api/orders/:id" do
+      order = @orders.find { |o| o.id == params["id"].to_i }
+      halt 404 unless order
+
+      json_response(order_payload(order))
+    end
 
     not_found do
       status 404
-      "Page not found"
+      if request.path_info.start_with?("/api/")
+        json_response(error: "Not found")
+      else
+        "Page not found"
+      end
     end
 
     helpers do
@@ -289,6 +340,69 @@ module Smedge
       def link_to_client(client)
         name = Rack::Utils.escape_html(client.name.to_s)
         %(<a href="/clients/#{client.id}">#{name}</a>)
+      end
+
+      # Render +payload+ as an API JSON response.
+      def json_response(payload)
+        content_type :json
+        JSON.generate(payload)
+      end
+
+      # JSON object for a Money value: integer paise plus a formatted display
+      # string in Indian style.
+      def money_payload(value)
+        money = value.is_a?(Money) ? value : Money.new(value)
+        { paise: money.cents, formatted: money(money) }
+      end
+
+      def client_payload(client)
+        {
+          id: client.id,
+          name: client.name,
+          email: client.email,
+          available_credit: money_payload(client.available_credit),
+          total_debits: money_payload(client.total_debits)
+        }
+      end
+
+      def order_summary_payload(order)
+        {
+          id: order.id,
+          order_id: order.order_id,
+          date: order.date&.strftime("%d-%m-%Y"),
+          status_flags: order.status_flags,
+          total: money_payload(order.total_amount_after_discount),
+          balance_due: money_payload(order.balance_due)
+        }
+      end
+
+      def order_payload(order)
+        order_summary_payload(order).merge(
+          total_before_discount: money_payload(order.total_amount_before_discount),
+          discount: money_payload(order.discount),
+          received: money_payload(order.total_received),
+          items: order.items.map { |item| item_payload(item) },
+          payments: order.income.map { |payment| payment_payload(payment) }
+        )
+      end
+
+      def item_payload(item)
+        {
+          description: item.item,
+          quantity: item.quantity,
+          rate: money_payload(item.rate),
+          total: money_payload(item.rate * item.quantity)
+        }
+      end
+
+      def payment_payload(payment)
+        {
+          amount: money_payload(payment.amount),
+          mode: payment.mode,
+          note: payment.note,
+          date: payment.date&.strftime("%d-%m-%Y"),
+          order_id: payment.order_id
+        }
       end
 
       def h(content)
