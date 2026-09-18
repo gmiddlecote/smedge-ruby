@@ -133,4 +133,15 @@ RSpec.describe Smedge::Db do
       Smedge::Db.create_transaction(client: client, amount_paise: 100, date: "nope", mode: "bank")
     end.to raise_error(Smedge::Error, /Invalid payment date/)
   end
+
+  it "resolves an ORD-* reference to a database order id" do
+    client, = Smedge::Db.find_or_create_client("Ron")
+    Smedge::Order.daily_order_count = Hash.new(0)
+    order = Smedge::Db.create_order(date: "05-09-2026", client: client, discount: 5_000,
+                                    items: [{ description: "Speaker", quantity: 2, rate: 150_000 }])
+
+    expect(Smedge::Db.order_id_for_ref(client.id, "ORD-05092026-001")).to eq(order.id)
+    expect(Smedge::Db.order_id_for_ref(client.id, "ORD-99999999-999")).to be_nil
+    expect(Smedge::Db.order_id_for_ref(client.id, "not-an-order")).to be_nil
+  end
 end

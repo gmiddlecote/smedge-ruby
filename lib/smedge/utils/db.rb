@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 # typed: strict
 
+require "date"
 require "sequel"
 require "sqlite3"
 require "yaml"
@@ -375,6 +376,19 @@ module Smedge
       end
     end
 
+    sig { params(client_id: Integer, order_ref: String).returns(T.nilable(Integer)) }
+    def order_id_for_ref(client_id, order_ref)
+      match = /\AORD-(\d{8})-(\d+)\z/.match(order_ref.to_s)
+      return unless match
+
+      date = Date.strptime(match[1], "%d%m%Y")
+      sequence = match[2].to_i
+      order = db[:orders].where(client_id: client_id, date: date).order(:id).offset(sequence - 1).first
+      order && order[:id]
+    rescue ArgumentError
+      nil
+    end
+
     private
 
     sig { void }
@@ -409,17 +423,10 @@ module Smedge
     sig { void }
     def migrate_order_refs_to_ids!
       db[:transactions].where(order_id: nil).exclude(order_ref: nil).each do |transaction|
-        match = /\AORD-(\d{8})-(\d+)\z/.match(transaction[:order_ref])
-        next unless match
+        next unless transaction[:order_ref]
 
-        date = Date.strptime(match[1], "%d%m%Y")
-        sequence = match[2].to_i
-        order = db[:orders]
-                  .where(client_id: transaction[:client_id], date: date)
-                  .order(:id)
-                  .offset(sequence - 1)
-                  .first
-        db[:transactions].where(id: transaction[:id]).update(order_id: order[:id]) if order
+        id = order_id_for_ref(transaction[:client_id], transaction[:order_ref])
+        db[:transactions].where(id: transaction[:id]).update(order_id: id) if id
       rescue ArgumentError
         next
       end

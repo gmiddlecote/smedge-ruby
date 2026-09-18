@@ -102,7 +102,7 @@ module Smedge
         date: Date.today.strftime("%d-%m-%Y"),
         mode: "credit",
         note: "Auto-applied to client credit",
-        order_id: @order_id
+        order_id: id || @order_id
       )
     end
 

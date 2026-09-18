@@ -117,4 +117,20 @@ RSpec.describe Smedge::Web do
     expect(last_response.status).to eq(200)
     expect(last_response.body).to include("Payment amount must be more than 0")
   end
+
+  it "exports a client statement as CSV" do
+    client = Smedge::Db.load_clients.find { |c| c.name == "Ron" }
+    get "/clients/#{T.must(client.id)}/export"
+    expect(last_response).to be_ok
+    expect(last_response.content_type).to include("text/csv")
+    expect(last_response.body.lines.first).to eq("Date,Type,Amount,Mode,Note\n")
+  end
+
+  it "quotes CSV cells that contain commas" do
+    client, = Smedge::Db.find_or_create_client("CSV Client", "csv@example.com")
+    Smedge::Db.create_transaction(client: client, amount_paise: 50_000, date: "05-09-2026",
+                                  mode: "bank", note: "advance, paid")
+    get "/clients/#{client.id}/export"
+    expect(last_response.body).to include("\"advance, paid\"")
+  end
 end

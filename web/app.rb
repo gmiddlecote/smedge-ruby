@@ -6,7 +6,6 @@ require "sinatra/base"
 require "bigdecimal"
 require "securerandom"
 require_relative "../lib/smedge"
-require_relative "../lib/smedge/services"
 
 module Smedge
   # Web interface for Smedge: dashboard, customers, orders, sales and payments.
@@ -202,16 +201,17 @@ module Smedge
       
       content_type "text/csv"
       attachment "statement_#{@client.name.downcase.gsub(" ", "_")}.csv"
-      
-      csv_string = "Date,Type,Amount,Mode,Note\n"
-      
+
+      csv_string = +"Date,Type,Amount,Mode,Note\n"
+
       # Credits (Income)
       Smedge::Db.transactions_for_client(@client.id).each do |txn|
         type = txn.is_a?(Smedge::Income) ? "Payment" : "Debit"
         amount = money(txn.amount)
-        csv_string << "#{txn.date},#{type},#{amount},#{txn.mode},#{txn.note}\n"
+        cols = [txn.date, type, amount, txn.mode, txn.note].map { |value| csv_escape(value) }
+        csv_string << "#{cols.join(",")}\n"
       end
-      
+
       csv_string
     end
 
@@ -261,16 +261,6 @@ module Smedge
         end
       end
 
-    # ... [Keep existing helpers] ...
-    # Delete the old build_items and credit_flow methods
-    # def build_items(payload)
-    # ...
-    # end
-    # def credit_flow(client)
-    # ...
-    # end
-
-
       # Convert a user-entered rupee string ("50", "1500.25") to integer paise.
       def rupees_to_paise(value)
         raise Smedge::Error, "Invalid amount: #{value.inspect}" if value.to_s.strip.empty?
@@ -283,6 +273,16 @@ module Smedge
       # Short alias for the Indian-style formatter (strips column padding).
       def money(amount)
         Smedge::Utils::CurrencyFormatter.format_money_in_indian_style(amount).strip
+      end
+
+      # Quote a CSV cell when it contains commas, quotes, or newlines so
+      # exported statements stay parseable in spreadsheet apps.
+      def csv_escape(value)
+        value = value.to_s
+        if /[",\n\r]/ =~ value then %("#{value.gsub('"', '""')}")
+        else
+          value
+        end
       end
 
       # Safe HTML link to a client's detail page.

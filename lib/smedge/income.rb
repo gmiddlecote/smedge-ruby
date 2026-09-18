@@ -43,7 +43,6 @@ module Smedge
       puts "Date: #{@date}"
       puts "Mode: #{@mode}"
       puts "Note: #{@note}"
-      # end
     end
 
     sig { returns(T::Hash[Symbol, T.untyped]) }

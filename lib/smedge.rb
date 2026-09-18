@@ -3,11 +3,11 @@
 
 # smedge.rb — entry point for the Smedge library (accounting, orders, reports).
 
-# Load Gemfile-declared dependencies, Sorbet runtime types, and the domain
-# model files below so that `require "smedge"` is everything a caller needs.
-require "bundler/setup"
+# Load Sorbet runtime types and every domain model below so that
+# `require "smedge"` is everything a caller needs. Entry points (main.rb,
+# web/app.rb and files run through bundle exec) are responsible for their own
+# Bundler setup, so this library file never calls `require "bundler/setup"`.
 require "sorbet-runtime"
-T.unsafe(Bundler).require("development")
 
 require_relative "smedge/version"
 require_relative "smedge/order"
@@ -20,6 +20,7 @@ require_relative "smedge/utils/currency_formatter"
 require_relative "smedge/utils/date_parse"
 require_relative "smedge/utils/display_helper"
 require_relative "smedge/utils/db"
+require_relative "smedge/services"
 
 # Restrict I18n to :en (used by the money gem for currency symbols).
 I18n.available_locales = %i[en]
