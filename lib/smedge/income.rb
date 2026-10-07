@@ -12,23 +12,11 @@ module Smedge
   class Income < Transaction
     extend T::Sig
 
-    class << self
-      attr_reader :all
-    end
-
-    @all = []
-
     attr_accessor :order_id
 
     def initialize(date:, amount:, mode:, note:, client:, order_id: nil)
       super(date, amount, mode, note, client)
       @order_id = order_id
-      self.class.all << self
-    end
-
-    sig { void }
-    def self.reset_all
-      @all = []
     end
 
     sig { returns(T::Boolean) }
@@ -58,15 +46,6 @@ module Smedge
       }
     end
 
-    # class method to access all receipts
-    sig { params(pastel: T.untyped).void }
-    def self.display_all(pastel: nil)
-      puts "\nAll receipts:"
-      all.each_with_index do |receipt, index|
-        receipt.display(pastel: pastel, index: index + 1)
-      end
-    end
-
     # True when this payment was auto-generated from client credit usage
     # (vs. a real cash/bank receipt), so it can be excluded from receipt lists.
     sig { returns(T::Boolean) }
@@ -74,8 +53,19 @@ module Smedge
       mode == "credit" && note.to_s.include?("Auto-applied")
     end
 
-    def self.display_all_grouped_by_client(pastel: nil)
-      grouped = all.group_by { |p| p.client.name }
+    # Class method to display all receipts, accepts incomes as parameter
+    sig { params(incomes: T::Array[Income], pastel: T.untyped).void }
+    def self.display_all(incomes, pastel: nil)
+      puts "\nAll receipts:"
+      incomes.each_with_index do |receipt, index|
+        receipt.display(pastel: pastel, index: index + 1)
+      end
+    end
+
+    # Class method to display all receipts grouped by client, accepts incomes as parameter
+    sig { params(incomes: T::Array[Income], pastel: T.untyped).void }
+    def self.display_all_grouped_by_client(incomes, pastel: nil)
+      grouped = incomes.group_by { |p| p.client.name }
       grand_total = Money.new(0)
 
       grouped.each do |client_name, receipts|

@@ -165,7 +165,7 @@ end
 # to a single client. Applies client credit per order while showing balances.
 def report(pastel, client_name)
   clients = Smedge::Db.load_clients
-  Smedge::Db.load_transactions(clients)
+  transactions = Smedge::Db.load_transactions(clients)
   orders = Smedge::Db.load_orders(clients)
 
   # heading
@@ -174,7 +174,12 @@ def report(pastel, client_name)
   Smedge::Utils::DisplayHelper.print_divider
 
   # Print Receipts from Clients
-  Smedge::Transaction.display_income_and_expense_by_month(pastel: pastel, client_name: client_name)
+  Smedge::Transaction.display_income_and_expense_by_month(
+    incomes: transactions[:incomes],
+    expenses: transactions[:expenses],
+    pastel: pastel,
+    client_name: client_name
+  )
 
   # Print Orders from Clients
   orders.each do |order|

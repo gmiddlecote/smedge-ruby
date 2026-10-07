@@ -1,0 +1,69 @@
+<%# 404 Not Found page %>
+<div class="error-container">
+  <div class="error-card">
+    <div class="error-icon">🔍</div>
+    <h1>Page Not Found</h1>
+    <p class="error-message">The page you're looking for doesn't exist or has been moved.</p>
+    <div class="error-actions">
+      <a href="javascript:history.back()" class="btn btn-secondary">Go Back</a>
+      <a href="/" class="btn btn-primary">Dashboard</a>
+    </div>
+  </div>
+</div>
+
+<style>
+.error-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 60vh;
+  padding: 1rem;
+}
+.error-card {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  padding: 2rem;
+  max-width: 480px;
+  text-align: center;
+}
+.error-icon {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+}
+.error-message {
+  color: #dc2626;
+  font-size: 1.1rem;
+  margin-bottom: 1.5rem;
+  line-height: 1.5;
+}
+.error-actions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.btn {
+  display: inline-block;
+  padding: 0.625rem 1.25rem;
+  border-radius: 6px;
+  text-decoration: none;
+  font-weight: 500;
+  font-size: 0.875rem;
+  transition: all 0.2s;
+}
+.btn-primary {
+  background: #2563eb;
+  color: white;
+}
+.btn-primary:hover {
+  background: #1d4ed8;
+}
+.btn-secondary {
+  background: #e5e7eb;
+  color: #374151;
+}
+.btn-secondary:hover {
+  background: #d1d5db;
+}
+</style>

@@ -41,10 +41,11 @@ module Smedge
     # tables per month, then running totals and net profit. Optionally filtered
     # to a single client via +client_name+.
     # pastel is kept T.untyped: Pastel's color methods are dynamic (method_missing).
-    sig { params(pastel: T.untyped, client_name: T.nilable(String)).void }
-    def self.display_income_and_expense_by_month(pastel: nil, client_name: nil)
-      income_data = Income.all.select { |r| r.date && (client_name.nil? || r.client.name == client_name) }
-      expense_data = Expense.all.select { |r| r.date && (client_name.nil? || r.client.name == client_name) }
+    # Accepts incomes and expenses as parameters instead of using class-level state.
+    sig { params(incomes: T::Array[Income], expenses: T::Array[Expense], pastel: T.untyped, client_name: T.nilable(String)).void }
+    def self.display_income_and_expense_by_month(incomes:, expenses:, pastel: nil, client_name: nil)
+      income_data = incomes.select { |r| r.date && (client_name.nil? || r.client.name == client_name) }
+      expense_data = expenses.select { |r| r.date && (client_name.nil? || r.client.name == client_name) }
 
       grouped = (income_data + expense_data).group_by { |r| r.date.strftime("%B %Y") }
 

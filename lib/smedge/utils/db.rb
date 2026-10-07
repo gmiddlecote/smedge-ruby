@@ -161,11 +161,13 @@ module Smedge
       order
     end
 
-    # Load all transaction rows and attach each to its client as an Income
-    # (credit) or Expense (debit).
-    sig { params(clients: T::Array[Client]).void }
+    # Load all transaction rows and return them as arrays of Income and Expense
+    # objects. No longer attaches to clients - callers should do that if needed.
+    sig { params(clients: T::Array[Client]).returns({ incomes: T::Array[Income], expenses: T::Array[Expense] }) }
     def load_transactions(clients)
       by_id = clients.to_h { |client| [T.must(client.id), client] }
+      incomes = []
+      expenses = []
 
       db[:transactions].each do |row|
         client = by_id[row[:client_id]]
@@ -173,28 +175,30 @@ module Smedge
 
         date = row[:date]&.strftime("%d-%m-%Y")
         if row[:type] == "income"
-          client.add_credit(
-            Income.new(
-              client: client,
-              amount: row[:amount_paise],
-              mode: row[:mode],
-              note: row[:note],
-              date: date,
-              order_id: row[:order_id]
-            )
+          income = Income.new(
+            client: client,
+            amount: row[:amount_paise],
+            mode: row[:mode],
+            note: row[:note],
+            date: date,
+            order_id: row[:order_id]
           )
+          incomes << income
+          client.add_credit(income)
         else
-          client.add_debit(
-            Expense.new(
-              client: client,
-              amount: row[:amount_paise],
-              mode: row[:mode],
-              note: row[:note],
-              date: date
-            )
+          expense = Expense.new(
+            client: client,
+            amount: row[:amount_paise],
+            mode: row[:mode],
+            note: row[:note],
+            date: date
           )
+          expenses << expense
+          client.add_debit(expense)
         end
       end
+
+      { incomes: incomes, expenses: expenses }
     end
 
     # Rebuild Order objects with their items and re-attach linked payments.
@@ -220,10 +224,21 @@ module Smedge
         order
       end
 
+      # Query payments linked to orders from the database instead of using Income.all
       payments_by_order = T.let({}, T::Hash[Integer, T::Array[Income]])
-      Income.all.each do |income|
-        next if income.order_id.nil?
+      db[:transactions].where(type: "income").exclude(order_id: nil).each do |row|
+        client = by_id[row[:client_id]]
+        next unless client
 
+        date = row[:date]&.strftime("%d-%m-%Y")
+        income = Income.new(
+          client: client,
+          amount: row[:amount_paise],
+          mode: row[:mode],
+          note: row[:note],
+          date: date,
+          order_id: row[:order_id]
+        )
         (payments_by_order[income.order_id] ||= T.let([], T::Array[Income])) << income
       end
 

@@ -29,9 +29,26 @@ module Smedge
       Smedge::Db.init_db
     end
 
-    # Reload all customers, orders and transactions before each request.
+    # HTTP Basic Authentication - runs before each request
     before do
       @clients, @orders = reload_all
+      protected!
+    end
+
+    # HTTP Basic Authentication helper
+    def protected!
+      username = ENV.fetch("SMEDGE_AUTH_USERNAME", "admin")
+      password = ENV.fetch("SMEDGE_AUTH_PASSWORD", "changeme")
+      return unless username && password
+      return if authorized?(username, password)
+      headers["WWW-Authenticate"] = %(Basic realm="Smedge Admin")
+      halt 401, "Not authorized\n"
+    end
+
+    def authorized?(username, password)
+      @auth ||= Rack::Auth::Basic::Request.new(request.env)
+      @auth.provided? && @auth.basic? && @auth.credentials &&
+        @auth.credentials == [username, password]
     end
 
     # Dashboard: summary cards, monthly line chart and recent orders.
@@ -203,13 +220,18 @@ module Smedge
       content_type "text/csv"
       attachment "statement_#{@client.name.downcase.gsub(" ", "_")}.csv"
       
-      csv_string = "Date,Type,Amount,Mode,Note\n"
-      
-      # Credits (Income)
-      Smedge::Db.transactions_for_client(@client.id).each do |txn|
-        type = txn.is_a?(Smedge::Income) ? "Payment" : "Debit"
-        amount = money(txn.amount)
-        csv_string << "#{txn.date},#{type},#{amount},#{txn.mode},#{txn.note}\n"
+      # Use Ruby's CSV library for proper CSV generation
+      require "csv"
+      csv_string = CSV.generate do |csv|
+        csv << %w[Date Type Amount Mode Note]
+        
+        # Get transactions for this client
+        transactions = Smedge::Db.transactions_for_client(@client.id)
+        transactions.each do |txn|
+          type = txn.is_a?(Smedge::Income) ? "Payment" : "Debit"
+          amount = money(txn.amount)
+          csv << [txn.date, type, amount, txn.mode, txn.note]
+        end
       end
       
       csv_string
@@ -218,22 +240,76 @@ module Smedge
 
     not_found do
       status 404
-      "Page not found"
+      if request.xhr? || request.accept.include?("application/json")
+        { error: "Not found", path: request.path }.to_json
+      else
+        erb :not_found
+      end
+    end
+
+    # Handle Smedge::Error - validation and business logic errors
+    error Smedge::Error do
+      log_error(env["sinatra.error"])
+      @error = env["sinatra.error"].message
+      status 400
+      if request.xhr? || request.accept.include?("application/json")
+        { error: @error }.to_json
+      else
+        erb :error
+      end
+    end
+
+    # Handle database errors
+    error Sequel::DatabaseError do
+      log_error(env["sinatra.error"])
+      @error = "A database error occurred. Please try again."
+      status 500
+      if request.xhr? || request.accept.include?("application/json")
+        { error: @error }.to_json
+      else
+        erb :error
+      end
+    end
+
+    # Handle argument errors (e.g., invalid date parsing)
+    error ArgumentError do
+      log_error(env["sinatra.error"])
+      @error = "Invalid input: #{env["sinatra.error"].message}"
+      status 400
+      if request.xhr? || request.accept.include?("application/json")
+        { error: @error }.to_json
+      else
+        erb :error
+      end
+    end
+
+    # Catch-all for unexpected errors
+    error do
+      log_error(env["sinatra.error"])
+      @error = "An unexpected error occurred. Please try again or contact support."
+      status 500
+      if request.xhr? || request.accept.include?("application/json")
+        { error: @error }.to_json
+      else
+        erb :error
+      end
     end
 
     helpers do
-      # Global error handler for Smedge errors
-      error Smedge::Error do
-        @error = env["sinatra.error"].message
-        erb :error # Or a generic error view
+      # Log an error with context
+      def log_error(error)
+        return unless error
+        msg = "[ERROR] #{error.class}: #{error.message}"
+        msg += "\n  Path: #{request.path}"
+        msg += "\n  Method: #{request.request_method}"
+        msg += "\n  Params: #{params.inspect}" unless params.empty?
+        msg += "\n  Backtrace: #{error.backtrace.first(5).join("\n  ")}" if error.backtrace
+        warn msg
       end
 
       # Drop in-memory records and reload from the database, so one request
-      # never carries over state from another (Income/Expense live in class-level
-      # arrays and must be reset first).
+      # never carries over state from another.
       def reload_all
-        Smedge::Income.reset_all
-        Smedge::Expense.reset_all
         clients = Smedge::Db.load_clients
         Smedge::Db.load_transactions(clients)
         [clients, Smedge::Db.load_orders(clients)]
@@ -242,8 +318,10 @@ module Smedge
       # Per-month income/expense totals (newest month first) for the dashboard
       # cards and the line chart.
       def monthly_summary
-        income = Smedge::Income.all.select { |record| record.date && record.amount.cents.positive? }
-        expense = Smedge::Expense.all.select { |record| record.date && record.amount.cents.positive? }
+        clients = Smedge::Db.load_clients
+        transactions = Smedge::Db.load_transactions(clients)
+        income = transactions[:incomes].select { |record| record.date && record.amount.cents.positive? }
+        expense = transactions[:expenses].select { |record| record.date && record.amount.cents.positive? }
 
         (income + expense).group_by { |record| record.date.strftime("%B %Y") }
                           .sort_by { |month, _| Date.strptime(month, "%B %Y") }

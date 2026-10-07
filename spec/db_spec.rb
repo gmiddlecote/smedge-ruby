@@ -92,8 +92,6 @@ RSpec.describe Smedge::Db do
     expect(Smedge::Db.db[:transactions].count).to eq(1)
     expect(Smedge::Db.db[:transactions].first[:order_id]).to eq(order.id)
 
-    Smedge::Income.reset_all
-    Smedge::Expense.reset_all
     Smedge::Db.load_transactions([client])
     reloaded = Smedge::Db.load_orders([client]).first
     expect(reloaded.total_received).to eq(Money.new(100_000, "INR"))
@@ -107,8 +105,6 @@ RSpec.describe Smedge::Db do
 
     expect(Smedge::Db.db[:transactions].first[:order_id]).to be_nil
 
-    Smedge::Income.reset_all
-    Smedge::Expense.reset_all
     Smedge::Db.load_transactions([client])
     expect(client.available_credit).to eq(Money.new(50_000, "INR"))
   end
