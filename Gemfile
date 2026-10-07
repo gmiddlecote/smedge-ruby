@@ -5,6 +5,10 @@ source "https://rubygems.org"
 # Specify your gem's dependencies in smedge.gemspec
 gemspec
 
+# Ruby 4.0+ includes bigdecimal 4.x as default gem
+gem "bigdecimal", ">= 3.1"
+gem "csv", "~> 3.2"
+
 group :development do
   # NOTE: The `sorbet` gem (static type checker) is NOT installable on
   # Windows/no-WSL because sorbet-static ships no Windows binary. Keep only

@@ -17,6 +17,28 @@ module Smedge
     sig { returns(Money) }
     attr_reader :rate
 
+    # GST fields
+    sig { returns(T.nilable(String)) }
+    attr_accessor :hsn_code
+
+    sig { returns(T.nilable(String)) }
+    attr_accessor :sac_code
+
+    sig { returns(Integer) }
+    attr_accessor :gst_rate_percent
+
+    sig { returns(Integer) }
+    attr_accessor :taxable_value_paise
+
+    sig { returns(Integer) }
+    attr_accessor :cgst_paise
+
+    sig { returns(Integer) }
+    attr_accessor :sgst_paise
+
+    sig { returns(Integer) }
+    attr_accessor :igst_paise
+
     # Printing tracking
     sig { returns(Integer) }
     attr_accessor :quantity_printed
@@ -49,17 +71,63 @@ module Smedge
       @delivery_completed = false
       @printing_logs = T.let([], T::Array[T::Hash[Symbol, T.untyped]])
       @delivery_logs = T.let([], T::Array[T::Hash[Symbol, T.untyped]])
+      @hsn_code = nil
+      @sac_code = nil
+      @gst_rate_percent = 18
+      @taxable_value_paise = 0
+      @cgst_paise = 0
+      @sgst_paise = 0
+      @igst_paise = 0
+      @printing_logs = T.let([], T::Array[T::Hash[Symbol, T.untyped]])
+      @delivery_logs = T.let([], T::Array[T::Hash[Symbol, T.untyped]])
     end
 
     sig { params(rate: Integer).void }
     def setrate(rate)
       @rate = Utils::CurrencyFormatter.new_money(rate)
+      calculate_gst
     end
 
     # Line subtotal: rate x quantity.
     sig { returns(Money) }
     def total
       @rate * @quantity
+    end
+
+    # Calculate GST based on rate, quantity, and client/order place of supply
+    sig { params(place_of_supply: T.nilable(String), client_state: T.nilable(String)).void }
+    def calculate_gst(place_of_supply: nil, client_state: nil)
+      return if @rate.cents == 0 || @quantity == 0
+
+      @taxable_value_paise = total.cents
+
+      # Determine if IGST or CGST+SGST applies
+      # IGST for inter-state, CGST+SGST for intra-state
+      is_interstate = place_of_supply && client_state && place_of_supply != client_state
+
+      gst_amount = (@taxable_value_paise * @gst_rate_percent) / 100
+
+      if is_interstate
+        @igst_paise = gst_amount
+        @cgst_paise = 0
+        @sgst_paise = 0
+      else
+        @cgst_paise = gst_amount / 2
+        @sgst_paise = gst_amount - @cgst_paise
+        @igst_paise = 0
+      end
+    end
+
+    # Total GST amount
+    sig { returns(Integer) }
+    def total_gst_paise
+      @cgst_paise + @sgst_paise + @igst_paise
+    end
+
+    # Total with GST
+    sig { returns(Integer) }
+    def total_with_gst_paise
+      @taxable_value_paise + total_gst_paise
     end
 
     # Record printing progress for this item
@@ -124,12 +192,31 @@ module Smedge
       (@quantity_delivered.to_f / @quantity_printed * 100).round(2)
     end
 
+    # Line subtotal: rate x quantity.
+    sig { returns(Money) }
+    def total
+      @rate * @quantity
+    end
+
+    sig { params(rate: Integer).void }
+    def setrate(rate)
+      @rate = Utils::CurrencyFormatter.new_money(rate)
+      calculate_gst
+    end
+
     sig { void }
     def displayorder
       formatted_rate = Smedge::Utils::CurrencyFormatter.format_money_in_indian_style(@rate)
       formatted_total = Smedge::Utils::CurrencyFormatter.format_money_in_indian_style(total)
 
       puts "Item: #{item} Quantity: #{quantity} Rate: #{formatted_rate} Total: #{formatted_total}"
+      puts "  HSN/SAC: #{@hsn_code || @sac_code || 'N/A'}"
+      puts "  GST Rate: #{@gst_rate_percent}%"
+      puts "  Taxable Value: #{Smedge::Utils::CurrencyFormatter.format_money_in_indian_style(Money.new(@taxable_value_paise))}"
+      puts "  CGST: #{Smedge::Utils::CurrencyFormatter.format_money_in_indian_style(Money.new(@cgst_paise))}"
+      puts "  SGST: #{Smedge::Utils::CurrencyFormatter.format_money_in_indian_style(Money.new(@sgst_paise))}"
+      puts "  IGST: #{Smedge::Utils::CurrencyFormatter.format_money_in_indian_style(Money.new(@igst_paise))}"
+      puts "  Total with GST: #{Smedge::Utils::CurrencyFormatter.format_money_in_indian_style(Money.new(total_with_gst_paise))}"
       puts "  Printed: #{quantity_printed}/#{quantity} (#{print_progress_percentage}%)"
       puts "  Delivered: #{quantity_delivered}/#{quantity_printed} (#{delivery_progress_percentage}%)"
       unless printing_logs.empty?

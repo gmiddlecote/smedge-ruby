@@ -38,7 +38,7 @@ RSpec.describe Smedge::Db do
     expect(orders.size).to eq(20)
     expect(orders).to all(be_an(Smedge::Order))
     expect(orders.all? { |order| order.items.any? }).to be(true)
-    expect(orders.first.order_id).to match(/\AORD-\d{8}-\d{3}\z/)
+    expect(orders.first.order_id).to match(%r{\AORD/\d{2}-\d{2}/\d{5}\z})
   end
 
   it "creates a new client and returns the persisted one on a second call" do
@@ -86,7 +86,7 @@ RSpec.describe Smedge::Db do
   end
 
   it "records a payment that attaches to a linked order on reload" do
-    Smedge::Order.daily_order_count = Hash.new(0)
+    Smedge::Order.fy_order_count = Hash.new(0)
     client, = Smedge::Db.find_or_create_client("Ron")
     order = Smedge::Db.create_order(date: "05-09-2026", client: client, discount: 5000,
                                     items: [{ description: "Speaker", quantity: 2, rate: 150_000 }])
@@ -137,11 +137,13 @@ RSpec.describe Smedge::Db do
 
   it "resolves an ORD-* reference to a database order id" do
     client, = Smedge::Db.find_or_create_client("Ron")
-    Smedge::Order.daily_order_count = Hash.new(0)
+    Smedge::Order.fy_order_count = Hash.new(0)
     order = Smedge::Db.create_order(date: "05-09-2026", client: client, discount: 5_000,
                                     items: [{ description: "Speaker", quantity: 2, rate: 150_000 }])
 
-    expect(Smedge::Db.order_id_for_ref(client.id, "ORD-05092026-001")).to eq(order.id)
+    # The new format is ORD/25-26/00001
+    ref = order.order_id
+    expect(Smedge::Db.order_id_for_ref(client.id, ref)).to eq(order.id)
     expect(Smedge::Db.order_id_for_ref(client.id, "ORD-99999999-999")).to be_nil
     expect(Smedge::Db.order_id_for_ref(client.id, "not-an-order")).to be_nil
   end

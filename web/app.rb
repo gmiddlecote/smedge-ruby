@@ -140,6 +140,56 @@ module Smedge
       erb :customers_new
     end
 
+    get "/clients/:id/edit" do
+      @client = Smedge::Db.find_client(params["id"].to_i)
+      halt 404, "Client not found" unless @client
+      erb :customers_edit
+    end
+
+    # Update a customer (or create if new name)
+    post "/clients/:id" do
+      client = Smedge::Db.find_client(params["id"].to_i)
+      halt 404, "Client not found" unless client
+
+      name = params["name"].to_s.strip
+      email = params["email"].to_s.strip
+      gstin = params["gstin"].to_s.strip
+      state = params["state"].to_s.strip
+      address = params["address"].to_s.strip
+      city = params["city"].to_s.strip
+      pincode = params["pincode"].to_s.strip
+
+      raise Smedge::Error, "Customer name is required" if name.empty?
+
+      # Update client fields
+      client.name = name
+      client.email = email.empty? ? nil : email
+      client.gstin = gstin.empty? ? nil : gstin
+      client.state = state.empty? ? nil : state
+      client.address = address.empty? ? nil : address
+      client.city = city.empty? ? nil : city
+      client.pincode = pincode.empty? ? nil : pincode
+
+      # Persist changes
+      db = Smedge::Db.db
+      db[:clients].where(id: client.id).update(
+        name: client.name,
+        email: client.email,
+        gstin: client.gstin,
+        state: client.state,
+        address: client.address,
+        city: client.city,
+        pincode: client.pincode
+      )
+
+      session[:notice] = "Customer updated: #{client.name}"
+      redirect "/clients/#{client.id}"
+    rescue Smedge::Error => e
+      @error = e.message
+      @client = client
+      erb :customers_edit
+    end
+
     get "/sales/new" do
       erb :sales_new
     end
