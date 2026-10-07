@@ -54,6 +54,8 @@ module Smedge
     def reset_schema
       warn "[DB] Resetting schema, dropping tables..."
       # Drop in reverse dependency order to avoid FK constraint errors
+      db.drop_table? :printing_logs
+      db.drop_table? :delivery_logs
       db.drop_table? :order_items
       db.drop_table? :orders
       db.drop_table? :transactions
@@ -229,6 +231,10 @@ module Smedge
         db[:order_items].where(order_id: row[:id]).order(:id).each do |item_row|
           item = OrderItem.new(item_row[:description], item_row[:quantity])
           item.setrate(item_row[:rate_paise])
+          item.quantity_printed = item_row[:quantity_printed] || 0
+          item.quantity_delivered = item_row[:quantity_delivered] || 0
+          item.printing_completed = item_row[:printing_completed] || false
+          item.delivery_completed = item_row[:delivery_completed] || false
           order.add_item(item)
         end
         order
@@ -317,7 +323,11 @@ module Smedge
             order_id: order_id,
             description: item[:description],
             quantity: item[:quantity],
-            rate_paise: item[:rate]
+            rate_paise: item[:rate],
+            quantity_printed: 0,
+            quantity_delivered: 0,
+            printing_completed: false,
+            delivery_completed: false
           )
         end
         order
@@ -414,7 +424,11 @@ module Smedge
             order_id: order_id,
             description: item["description"],
             quantity: item["quantity"],
-            rate_paise: item["rate"]
+            rate_paise: item["rate"],
+            quantity_printed: 0,
+            quantity_delivered: 0,
+            printing_completed: false,
+            delivery_completed: false
           )
         end
       end
@@ -464,23 +478,96 @@ module Smedge
       db.alter_table(table) { add_index column }
     end
 
-    sig { void }
-    def migrate_order_refs_to_ids!
-      db[:transactions].where(order_id: nil).exclude(order_ref: nil).each do |transaction|
-        next unless transaction[:order_ref]
-
-        id = order_id_for_ref(transaction[:client_id], transaction[:order_ref])
-        db[:transactions].where(id: transaction[:id]).update(order_id: id) if id
-      rescue ArgumentError
-        next
-      end
-    end
-
     sig { params(date: T.nilable(String)).returns(T.nilable(Date)) }
     def parse_date(date)
       return unless date
 
       Utils::DateParser.parse(date)
+    end
+
+    # Record printing progress for an order item
+    sig do
+      params(
+        order_item_id: Integer,
+        quantity: Integer,
+        date: String,
+        note: T.nilable(String)
+      ).void
+    end
+    def record_printing(order_item_id:, quantity:, date:, note: nil)
+      raise Smedge::Error, "Printing quantity must be positive" if quantity <= 0
+
+      item = db[:order_items].where(id: order_item_id).first
+      raise Smedge::Error, "Order item not found" unless item
+
+      db.transaction do
+        # Add printing log
+        db[:printing_logs].insert(
+          order_item_id: order_item_id,
+          quantity_printed: quantity,
+          printed_date: Utils::DateParser.parse(date),
+          note: note,
+          created_at: Sequel::CURRENT_TIMESTAMP
+        )
+
+        # Update order_item
+        new_printed = (item[:quantity_printed] || 0) + quantity
+        printing_completed = new_printed >= item[:quantity]
+        db[:order_items].where(id: order_item_id).update(
+          quantity_printed: new_printed,
+          printing_completed: printing_completed
+        )
+      end
+    end
+
+    # Record delivery for an order item
+    sig do
+      params(
+        order_item_id: Integer,
+        quantity: Integer,
+        date: String,
+        note: T.nilable(String)
+      ).void
+    end
+    def record_delivery(order_item_id:, quantity:, date:, note: nil)
+      raise Smedge::Error, "Delivery quantity must be positive" if quantity <= 0
+
+      item = db[:order_items].where(id: order_item_id).first
+      raise Smedge::Error, "Order item not found" unless item
+
+      printed = item[:quantity_printed] || 0
+      delivered = (item[:quantity_delivered] || 0) + quantity
+      raise Smedge::Error, "Cannot deliver more than printed quantity" if delivered > printed
+
+      db.transaction do
+        # Add delivery log
+        db[:delivery_logs].insert(
+          order_item_id: order_item_id,
+          quantity_delivered: quantity,
+          delivered_date: Utils::DateParser.parse(date),
+          note: note,
+          created_at: Sequel::CURRENT_TIMESTAMP
+        )
+
+        # Update order_item
+        delivery_completed = delivered >= (item[:quantity_printed] || 0)
+        db[:order_items].where(id: order_item_id).update(
+          quantity_delivered: delivered,
+          delivery_completed: delivery_completed
+        )
+      end
+    end
+
+    # Get printing logs for an order item
+    sig { params(order_item_id: Integer).returns(T::Array[T::Hash[Symbol, T.untyped]]) }
+    def get_printing_logs(order_item_id)
+      db[:printing_logs].where(order_item_id: order_item_id).order(:printed_date, :id).all
+    end
+
+    # Get delivery logs for an order item
+    sig { params(order_item_id: Integer).returns(T::Array[T::Hash[Symbol, T.untyped]]) }
+    def get_delivery_logs(order_item_id)
+      db[:delivery_logs].where(order_item_id: order_item_id).order(:delivered_date, :id).all
     end
   end
 end

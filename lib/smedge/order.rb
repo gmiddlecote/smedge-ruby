@@ -129,6 +129,67 @@ module Smedge
       @items << item
     end
 
+    # Record printing for a specific item in this order
+    sig { params(item_description: String, quantity: Integer, date: String, note: T.nilable(String)).void }
+    def record_item_printing(item_description, quantity, date, note: nil)
+      item = @items.find { |i| i.item == item_description }
+      raise Smedge::Error, "Item not found: #{item_description}" unless item
+      item.record_printing(quantity, date, note: note)
+      update_printing_status
+    end
+
+    # Record delivery for a specific item in this order
+    sig { params(item_description: String, quantity: Integer, date: String, note: T.nilable(String)).void }
+    def record_item_delivery(item_description, quantity, date, note: nil)
+      item = @items.find { |i| i.item == item_description }
+      raise Smedge::Error, "Item not found: #{item_description}" unless item
+      item.record_delivery(quantity, date, note: note)
+      update_delivery_status
+    end
+
+    # Update printing status flag based on items
+    def update_printing_status
+      all_printed = @items.all?(&:printing_completed)
+      any_printing = @items.any? { |i| i.quantity_printed.positive? }
+      @status_flags[:awaiting_print] = !any_printing
+      @status_flags[:printing] = any_printing && !all_printed
+      @status_flags[:printed] = all_printed
+    end
+
+    # Update delivery status flag based on items
+    def update_delivery_status
+      all_delivered = @items.all? { |i| i.delivery_completed && i.quantity_printed.positive? }
+      @status_flags[:delivered] = all_delivered
+    end
+
+    # Total printed quantity across all items
+    sig { returns(Integer) }
+    def total_printed
+      @items.sum(&:quantity_printed)
+    end
+
+    # Total delivered quantity across all items
+    sig { returns(Integer) }
+    def total_delivered
+      @items.sum(&:quantity_delivered)
+    end
+
+    # Overall printing progress percentage
+    sig { returns(Float) }
+    def overall_print_progress
+      total_qty = @items.sum(&:quantity)
+      return 0.0 if total_qty.zero?
+      (total_printed.to_f / total_qty * 100).round(2)
+    end
+
+    # Overall delivery progress percentage
+    sig { returns(Float) }
+    def overall_delivery_progress
+      tp = total_printed
+      return 0.0 if tp.zero?
+      (total_delivered.to_f / tp * 100).round(2)
+    end
+
     def display_order
       pastel = Pastel.new
       print pastel.white("\nOrder: ")
