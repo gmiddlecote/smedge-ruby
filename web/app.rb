@@ -4,9 +4,9 @@ require "bundler/setup"
 Bundler.require(:development, :web)
 require "sinatra/base"
 require "bigdecimal"
+require "json"
 require "securerandom"
 require_relative "../lib/smedge"
-require_relative "../lib/smedge/services"
 
 module Smedge
   # Web interface for Smedge: dashboard, customers, orders, sales and payments.
@@ -63,12 +63,12 @@ module Smedge
       page = (params["page"] || 1).to_i
       per_page = 20
       offset = (page - 1) * per_page
-      
+
       @clients = Smedge::Db.load_clients_paginated(limit: per_page, offset: offset)
       @total_clients = Smedge::Db.count_clients
       @current_page = page
       @total_pages = (@total_clients.to_f / per_page).ceil
-      
+
       erb :clients
     end
 
@@ -79,7 +79,7 @@ module Smedge
       halt 404, "Client has no id in database" unless @client.id
 
       @client_orders = @orders.select { |order| order.client.id == @client.id }
-      
+
       # Manually attach transactions to the client object for the view
       transactions = Smedge::Db.transactions_for_client(@client.id)
       transactions.each do |txn|
@@ -89,7 +89,7 @@ module Smedge
           @client.add_debit(txn)
         end
       end
-      
+
       @credit_flow = Smedge::Services.calculate_credit_flow(@client, @client_orders)
       erb :client
     end
@@ -98,7 +98,7 @@ module Smedge
     get "/orders/:id" do
       @order = Smedge::Db.find_order(params["id"].to_i)
       halt 404, "Order not found" unless @order
-      
+
       # Find payments explicitly linked to this order
       @payments = Smedge::Db.db[:transactions]
                                .where(order_id: @order.id, type: "income")
@@ -150,17 +150,17 @@ module Smedge
     post "/sales" do
       client_name = params["client"].to_s.strip
       raise Smedge::Error, "Customer name is required" if client_name.empty?
-      
+
       date = params["date"].to_s.strip
       raise Smedge::Error, "Sale date is required" if date.empty?
-      
+
       date = Date.parse(date).strftime("%d-%m-%Y")
       items = Smedge::Services.build_items(params["item"])
       raise Smedge::Error, "Add at least one item" if items.empty?
-      
+
       discount = params["discount"].to_s.strip
       discount_paise = discount.empty? ? 0 : rupees_to_paise(discount)
-      
+
       client, = Smedge::Db.find_or_create_client(client_name)
       order = Smedge::Db.create_order(date: date, client: client, discount: discount_paise, items: items)
       session[:notice] = "Sale #{order.order_id} added for #{client.name}"
@@ -182,16 +182,16 @@ module Smedge
     post "/payments" do
       client_name = params["client"].to_s.strip
       raise Smedge::Error, "Customer name is required" if client_name.empty?
-      
+
       amount = params["amount"].to_s.strip
       raise Smedge::Error, "Payment amount is required" if amount.empty?
-      
+
       amount_paise = rupees_to_paise(amount)
       raise Smedge::Error, "Payment amount must be more than 0" if amount_paise <= 0
-      
+
       date = params["date"].to_s.strip
       raise Smedge::Error, "Payment date is required" if date.empty?
-      
+
       date = Date.parse(date).strftime("%d-%m-%Y")
       mode = params["mode"].to_s.strip
       mode = "bank" if mode.empty?
@@ -199,7 +199,7 @@ module Smedge
       note = nil if note.empty?
       order_id = params["order_id"].to_s.strip
       order_id = (order_id.empty? ? nil : order_id.to_i)
-      
+
       client, = Smedge::Db.find_or_create_client(client_name)
       Smedge::Db.create_transaction(client: client, amount_paise: amount_paise, date: date, mode: mode, note: note, order_id: order_id)
       message = "Payment recorded: #{money(Money.new(amount_paise))} for #{client.name}"
@@ -216,15 +216,15 @@ module Smedge
     get "/clients/:id/export" do
       @client = Smedge::Db.find_client(params["id"].to_i)
       halt 404, "Client not found" unless @client
-      
+
       content_type "text/csv"
       attachment "statement_#{@client.name.downcase.gsub(" ", "_")}.csv"
-      
+
       # Use Ruby's CSV library for proper CSV generation
       require "csv"
       csv_string = CSV.generate do |csv|
         csv << %w[Date Type Amount Mode Note]
-        
+
         # Get transactions for this client
         transactions = Smedge::Db.transactions_for_client(@client.id)
         transactions.each do |txn|
@@ -233,10 +233,56 @@ module Smedge
           csv << [txn.date, type, amount, txn.mode, txn.note]
         end
       end
-      
+
       csv_string
     end
 
+    # ── Customer-facing JSON API ────────────────────────────────────────────
+    # JSON endpoints for a mobile/partner frontend. Amounts are integers in
+    # paise (1/100 of a rupee) alongside Indian-formatted display strings.
+    #
+    # NOTE: these endpoints are intentionally served from the same Sinatra
+    # process and are NOT authenticated yet — customer auth must be added
+    # before exposing them beyond a trusted network.
+
+    # Client summary: identity plus current credit and debit totals.
+    get "/api/clients/:id" do
+      client = @clients.find { |c| c.id == params["id"].to_i }
+      halt 404 unless client
+
+      json_response(client_payload(client))
+    end
+
+    # Client's order history (newest first) with running balance info.
+    get "/api/clients/:id/orders" do
+      client = @clients.find { |c| c.id == params["id"].to_i }
+      halt 404 unless client
+
+      orders = @orders.select { |order| order.client.id == client.id }
+                      .sort_by(&:date).reverse
+                      .map { |order| order_summary_payload(order) }
+      json_response(orders: orders)
+    end
+
+    # Client's payment statement: every income and expense, newest first.
+    get "/api/clients/:id/payments" do
+      client = @clients.find { |c| c.id == params["id"].to_i }
+      halt 404 unless client
+
+      payments = (client.credits.map { |payment| payment_payload(payment).merge(type: "income") } +
+                  client.debits.map { |payment| payment_payload(payment).merge(type: "expense") })
+                 .sort_by { |payment| payment[:date] || "" }
+                 .reverse
+      json_response(payments: payments)
+    end
+
+    # Full order detail: line items, totals, status flags and linked payments.
+    get "/api/orders/:id" do
+      order = @orders.find { |o| o.id == params["id"].to_i }
+      halt 404 unless order
+
+      json_response(order_payload(order))
+    end
 
     not_found do
       status 404
@@ -311,7 +357,7 @@ module Smedge
       # never carries over state from another.
       def reload_all
         clients = Smedge::Db.load_clients
-        Smedge::Db.load_transactions(clients)
+        transactions = Smedge::Db.load_transactions(clients)
         [clients, Smedge::Db.load_orders(clients)]
       end
 
@@ -339,16 +385,6 @@ module Smedge
         end
       end
 
-    # ... [Keep existing helpers] ...
-    # Delete the old build_items and credit_flow methods
-    # def build_items(payload)
-    # ...
-    # end
-    # def credit_flow(client)
-    # ...
-    # end
-
-
       # Convert a user-entered rupee string ("50", "1500.25") to integer paise.
       def rupees_to_paise(value)
         raise Smedge::Error, "Invalid amount: #{value.inspect}" if value.to_s.strip.empty?
@@ -363,10 +399,83 @@ module Smedge
         Smedge::Utils::CurrencyFormatter.format_money_in_indian_style(amount).strip
       end
 
+      # Quote a CSV cell when it contains commas, quotes, or newlines so
+      # exported statements stay parseable in spreadsheet apps.
+      def csv_escape(value)
+        value = value.to_s
+        if /[",\n\r]/ =~ value then %("#{value.gsub('"', '""')}")
+        else
+          value
+        end
+      end
+
       # Safe HTML link to a client's detail page.
       def link_to_client(client)
         name = Rack::Utils.escape_html(client.name.to_s)
         %(<a href="/clients/#{client.id}">#{name}</a>)
+      end
+
+      # Render +payload+ as an API JSON response.
+      def json_response(payload)
+        content_type :json
+        JSON.generate(payload)
+      end
+
+      # JSON object for a Money value: integer paise plus a formatted display
+      # string in Indian style.
+      def money_payload(value)
+        money = value.is_a?(Money) ? value : Money.new(value)
+        { paise: money.cents, formatted: money(money) }
+      end
+
+      def client_payload(client)
+        {
+          id: client.id,
+          name: client.name,
+          email: client.email,
+          available_credit: money_payload(client.available_credit),
+          total_debits: money_payload(client.total_debits)
+        }
+      end
+
+      def order_summary_payload(order)
+        {
+          id: order.id,
+          order_id: order.order_id,
+          date: order.date&.strftime("%d-%m-%Y"),
+          status_flags: order.status_flags,
+          total: money_payload(order.total_amount_after_discount),
+          balance_due: money_payload(order.balance_due)
+        }
+      end
+
+      def order_payload(order)
+        order_summary_payload(order).merge(
+          total_before_discount: money_payload(order.total_amount_before_discount),
+          discount: money_payload(order.discount),
+          received: money_payload(order.total_received),
+          items: order.items.map { |item| item_payload(item) },
+          payments: order.income.map { |payment| payment_payload(payment) }
+        )
+      end
+
+      def item_payload(item)
+        {
+          description: item.item,
+          quantity: item.quantity,
+          rate: money_payload(item.rate),
+          total: money_payload(item.rate * item.quantity)
+        }
+      end
+
+      def payment_payload(payment)
+        {
+          amount: money_payload(payment.amount),
+          mode: payment.mode,
+          note: payment.note,
+          date: payment.date&.strftime("%d-%m-%Y"),
+          order_id: payment.order_id
+        }
       end
 
       def h(content)

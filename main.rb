@@ -7,6 +7,7 @@
 # record customers, sales and payments directly, e.g.:
 #   ruby main.rb --add-sale "Ron" --item "Poster;100;5000" --discount 2000
 #   ruby main.rb --add-payment "Ron" --amount 100000 --mode bank
+require "bundler/setup"
 require "pastel"
 require "optparse"
 
@@ -146,13 +147,19 @@ def add_payments(entries)
     raise Smedge::Error, "--amount is required for --add-payment #{entry[:client].inspect}" if entry[:amount].nil?
 
     client, = Smedge::Db.find_or_create_client(entry[:client])
+    order_id = nil
+    if entry[:order]
+      order_id = Smedge::Db.order_id_for_ref(T.must(client.id), entry[:order])
+      raise Smedge::Error, "Order not found: #{entry[:order]}" unless order_id
+    end
+
     Smedge::Db.create_transaction(
       client: client,
       amount_paise: entry[:amount],
       date: entry[:date] || Date.today.strftime("%d-%m-%Y"),
       mode: entry[:mode] || "bank",
       note: entry[:note],
-      order_ref: entry[:order]
+      order_id: order_id
     )
     amount = Smedge::Utils::CurrencyFormatter.format_money_in_indian_style(Money.new(entry[:amount])).strip
     message = "Payment recorded: #{amount} for #{client.name}"

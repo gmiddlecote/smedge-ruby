@@ -128,4 +128,65 @@ RSpec.describe Smedge::Web do
     expect(last_response.status).to eq(200)
     expect(last_response.body).to include("Payment amount must be more than 0")
   end
+
+  it "exports a client statement as CSV" do
+    client = Smedge::Db.load_clients.find { |c| c.name == "Ron" }
+    get "/clients/#{T.must(client.id)}/export"
+    expect(last_response).to be_ok
+    expect(last_response.content_type).to include("text/csv")
+    expect(last_response.body.lines.first).to eq("Date,Type,Amount,Mode,Note\n")
+  end
+
+  it "quotes CSV cells that contain commas" do
+    client, = Smedge::Db.find_or_create_client("CSV Client", "csv@example.com")
+    Smedge::Db.create_transaction(client: client, amount_paise: 50_000, date: "05-09-2026",
+                                  mode: "bank", note: "advance, paid")
+    get "/clients/#{client.id}/export"
+    expect(last_response.body).to include("\"advance, paid\"")
+  end
+
+  it "serves a client summary via the API" do
+    client = Smedge::Db.load_clients.find { |c| c.name == "Ron" }
+    get "/api/clients/#{T.must(client.id)}"
+    expect(last_response).to be_ok
+    expect(last_response.content_type).to include("application/json")
+
+    body = JSON.parse(last_response.body)
+    expect(body["name"]).to eq("Ron")
+    expect(body["available_credit"]).to be_a(Hash)
+    expect(body["available_credit"]).to include("paise", "formatted")
+  end
+
+  it "serves a client's orders via the API" do
+    client = Smedge::Db.load_clients.find { |c| c.name == "Ron" }
+    get "/api/clients/#{T.must(client.id)}/orders"
+    expect(last_response).to be_ok
+
+    orders = JSON.parse(last_response.body)["orders"]
+    expect(orders).to be_an(Array)
+    expect(orders.first["order_id"]).to match(/\AORD-\d{8}-\d{3}\z/)
+    expect(orders.first["balance_due"]).to include("paise", "formatted")
+  end
+
+  it "serves an order detail via the API" do
+    client = Smedge::Db.load_clients.find { |c| c.name == "Ron" }
+    order = Smedge::Db.load_orders([client]).first
+    get "/api/orders/#{T.must(order.id)}"
+    expect(last_response).to be_ok
+
+    body = JSON.parse(last_response.body)
+    expect(body["items"]).to be_an(Array)
+    expect(body["items"].first).to include("description", "quantity", "rate", "total")
+    expect(body).to include("status_flags", "balance_due")
+  end
+
+  it "returns JSON 404 for an unknown client or order" do
+    get "/api/clients/99999"
+    expect(last_response.status).to eq(404)
+    expect(JSON.parse(last_response.body)).to include("error")
+
+    get "/api/orders/99999"
+    expect(last_response.status).to eq(404)
+    expect(JSON.parse(last_response.body)).to include("error")
+  end
 end
