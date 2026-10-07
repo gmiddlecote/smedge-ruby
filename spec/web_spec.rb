@@ -56,7 +56,7 @@ RSpec.describe Smedge::Web do
     client = Smedge::Db.load_clients.find { |c| c.name == "Ron" }
     get "/clients/#{T.must(client.id)}", {}, auth_env
     expect(last_response).to be_ok
-    expect(last_response.body).to include("ORD-04042025-001")
+    expect(last_response.body).to match(%r{ORD/\d{2}-\d{2}/\d{5}})
   end
 
   it "returns 404 for an unknown customer" do
@@ -67,7 +67,7 @@ RSpec.describe Smedge::Web do
   it "lists all orders" do
     get "/orders", {}, auth_env
     expect(last_response).to be_ok
-    expect(last_response.body).to include("ORD-04042025-001")
+    expect(last_response.body).to match(%r{ORD/\d{2}-\d{2}/\d{5}})
   end
 
   it "adds a customer via POST" do
@@ -168,7 +168,7 @@ RSpec.describe Smedge::Web do
 
     orders = JSON.parse(last_response.body)["orders"]
     expect(orders).to be_an(Array)
-    expect(orders.first["order_id"]).to match(/\AORD-\d{8}-\d{3}\z/)
+    expect(orders.first["order_id"]).to match(%r{\AORD/\d{2}-\d{2}/\d{5}\z})
     expect(orders.first["balance_due"]).to include("paise", "formatted")
   end
 

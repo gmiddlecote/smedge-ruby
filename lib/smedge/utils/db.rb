@@ -53,6 +53,8 @@ module Smedge
     sig { void }
     def reset_schema
       warn "[DB] Resetting schema, dropping tables..."
+      # Disable foreign keys to allow dropping tables with FK constraints
+      db.run("PRAGMA foreign_keys = OFF")
       # Drop in reverse dependency order to avoid FK constraint errors
       db.drop_table? :printing_logs
       db.drop_table? :delivery_logs
@@ -62,6 +64,7 @@ module Smedge
       db.drop_table? :credit_ledger_entries
       db.drop_table? :clients
       db.drop_table? :schema_migrations
+      db.run("PRAGMA foreign_keys = ON")
       warn "[DB] Tables dropped, reinitializing..."
       init_db
     end
@@ -101,7 +104,18 @@ module Smedge
     end
     sig { returns(T::Array[Client]) }
     def load_clients
-      load_clients_paginated(limit: 1000, offset: 0)
+      db[:clients].order(:id).all.map do |row|
+        Client.new(
+          row[:name],
+          row[:email],
+          row[:id],
+          gstin: row[:gstin],
+          state: row[:state],
+          address: row[:address],
+          city: row[:city],
+          pincode: row[:pincode]
+        )
+      end
     end
 
     sig { params(id: Integer).returns(T.nilable(Client)) }
@@ -219,7 +233,7 @@ module Smedge
     # payments, keeping the linkage stable across reloads.
     sig { params(clients: T::Array[Client]).returns(T::Array[Order]) }
     def load_orders(clients)
-      Smedge::Order.daily_order_count = Hash.new(0)
+      Smedge::Order.fy_order_count = Hash.new(0)
       by_id = clients.to_h { |client| [T.must(client.id), client] }
 
       orders = db[:orders].order(:date, :id).all.filter_map do |row|
@@ -235,6 +249,14 @@ module Smedge
           item.quantity_delivered = item_row[:quantity_delivered] || 0
           item.printing_completed = item_row[:printing_completed] || false
           item.delivery_completed = item_row[:delivery_completed] || false
+          # GST fields
+          item.hsn_code = item_row[:hsn_code]
+          item.sac_code = item_row[:sac_code]
+          item.gst_rate_percent = item_row[:gst_rate_percent] || 18
+          item.taxable_value_paise = item_row[:taxable_value_paise] || 0
+          item.cgst_paise = item_row[:cgst_paise] || 0
+          item.sgst_paise = item_row[:sgst_paise] || 0
+          item.igst_paise = item_row[:igst_paise] || 0
           order.add_item(item)
         end
         order
@@ -296,11 +318,15 @@ module Smedge
       order_date = Utils::DateParser.parse(date)
       raise Smedge::Error, "Invalid sale date: #{date.inspect}" unless order_date
       
-      # Generate deterministic order_id like the Order model does
-      date_key = order_date.strftime("%d%m%Y")
-      existing_count = db[:orders].where(date: order_date).count
-      serial = format("%03d", existing_count + 1)
-      order_id_str = "ORD-#{date_key}-#{serial}"
+      # Generate GST-compliant order_id like the Order model does
+      fy_start_year = order_date.month >= 4 ? order_date.year : order_date.year - 1
+      fy_end_year = fy_start_year + 1
+      fy_suffix = "#{fy_start_year.to_s[-2, 2]}-#{fy_end_year.to_s[-2, 2]}"
+      fy_key = "FY#{fy_suffix}"
+      Smedge::Order.fy_order_count ||= Hash.new(0)
+      Smedge::Order.fy_order_count[fy_key] += 1
+      serial = format("%05d", Smedge::Order.fy_order_count[fy_key])
+      order_id_str = "ORD/#{fy_suffix}/#{serial}"
       
       db.transaction do
         order = Order.new(date, client, discount)
@@ -327,7 +353,14 @@ module Smedge
             quantity_printed: 0,
             quantity_delivered: 0,
             printing_completed: false,
-            delivery_completed: false
+            delivery_completed: false,
+            hsn_code: item[:hsn_code],
+            sac_code: item[:sac_code],
+            gst_rate_percent: item[:gst_rate_percent] || 18,
+            taxable_value_paise: 0,
+            cgst_paise: 0,
+            sgst_paise: 0,
+            igst_paise: 0
           )
         end
         order
@@ -371,15 +404,22 @@ module Smedge
 
 
     sig { params(yaml_file_path: String).void }
-    # (Re)build the database from a YAML seed file. Resets the schema first, so
-    # it is only meant for seeding fresh databases (e.g. `rake db:seed`).
+    # Seed the database from a YAML file. Assumes the schema has already been
+    # initialized (e.g. via `reset_schema` or `init_db`).
     def seed_from_yaml(yaml_file_path)
       data = YAML.safe_load_file(yaml_file_path, aliases: true) || {}
-      reset_schema
 
       client_ids = T.let({}, T::Hash[String, Integer])
       (data["clients"] || []).each do |client_hash|
-        id = db[:clients].insert(name: client_hash["name"], email: client_hash["email"])
+        id = db[:clients].insert(
+          name: client_hash["name"],
+          email: client_hash["email"],
+          gstin: client_hash["gstin"],
+          state: client_hash["state"],
+          address: client_hash["address"],
+          city: client_hash["city"],
+          pincode: client_hash["pincode"]
+        )
         client_ids[T.must(client_hash["name"])] = T.must(id)
       end
 
@@ -428,7 +468,14 @@ module Smedge
             quantity_printed: 0,
             quantity_delivered: 0,
             printing_completed: false,
-            delivery_completed: false
+            delivery_completed: false,
+            hsn_code: item["hsn_code"],
+            sac_code: item["sac_code"],
+            gst_rate_percent: item["gst_rate_percent"] || 18,
+            taxable_value_paise: 0,
+            cgst_paise: 0,
+            sgst_paise: 0,
+            igst_paise: 0
           )
         end
       end
@@ -436,12 +483,13 @@ module Smedge
 
     sig { params(client_id: Integer, order_ref: String).returns(T.nilable(Integer)) }
     def order_id_for_ref(client_id, order_ref)
-      match = /\AORD-(\d{8})-(\d+)\z/.match(order_ref.to_s)
+      # New format: ORD/YY-YY/NNNNN
+      match = %r{\AORD/(\d{2}-\d{2})/(\d+)\z}.match(order_ref.to_s)
       return unless match
 
-      date = Date.strptime(match[1], "%d%m%Y")
+      fy_suffix = match[1]
       sequence = match[2].to_i
-      order = db[:orders].where(client_id: client_id, date: date).order(:id).offset(sequence - 1).first
+      order = db[:orders].where(client_id: client_id, order_id: "ORD/#{fy_suffix}/#{format("%05d", sequence)}").first
       order && order[:id]
     rescue ArgumentError
       nil

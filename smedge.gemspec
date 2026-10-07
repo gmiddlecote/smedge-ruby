@@ -37,7 +37,7 @@ Gem::Specification.new do |spec|
   # spec.add_dependency "example-gem", "~> 1.0"
 
   # Runtime dependencies
-  spec.add_dependency "bigdecimal", "~> 3.1", ">= 3.1.9"
+  spec.add_dependency "bigdecimal", ">= 3.1"
   spec.add_dependency "csv", "~> 3.2"
   spec.add_dependency "fiddle", "~> 1.1"
   spec.add_dependency "money", "~> 6.19"

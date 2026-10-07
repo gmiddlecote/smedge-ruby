@@ -9,6 +9,26 @@
     <label for="email">Email</label>
     <input type="email" id="email" name="email" value="<%= h(@email) %>">
   </div>
+  <div class="field">
+    <label for="gstin">GSTIN</label>
+    <input type="text" id="gstin" name="gstin" value="<%= h(@gstin) %>" placeholder="27AAAAA0000A1Z5">
+  </div>
+  <div class="field">
+    <label for="state">State</label>
+    <input type="text" id="state" name="state" value="<%= h(@state) %>" placeholder="Maharashtra">
+  </div>
+  <div class="field">
+    <label for="address">Address</label>
+    <input type="text" id="address" name="address" value="<%= h(@address) %>">
+  </div>
+  <div class="field">
+    <label for="city">City</label>
+    <input type="text" id="city" name="city" value="<%= h(@city) %>">
+  </div>
+  <div class="field">
+    <label for="pincode">Pincode</label>
+    <input type="text" id="pincode" name="pincode" value="<%= h(@pincode) %>" placeholder="400001">
+  </div>
   <div class="actions">
     <button type="submit">Save Customer</button>
     <a class="button" href="/clients">Cancel</a>

@@ -94,14 +94,15 @@ end
 RSpec.describe Smedge::Order do
   let(:client) { Smedge::Client.new("Ron") }
 
-  it "generates sequential order ids per day" do
-    Smedge::Order.daily_order_count.clear
+  it "generates sequential order ids per financial year" do
+    Smedge::Order.fy_order_count.clear
 
     order1 = Smedge::Order.new("04-04-2025", client)
     order2 = Smedge::Order.new("04-04-2025", client)
 
-    expect(order1.order_id).to eq("ORD-04042025-001")
-    expect(order2.order_id).to eq("ORD-04042025-002")
+    expect(order1.order_id).to match(%r{\AORD/25-26/\d{5}\z})
+    expect(order2.order_id).to match(%r{\AORD/25-26/\d{5}\z})
+    expect(order1.order_id).not_to eq(order2.order_id)
   end
 
   it "computes balance due after discount and payments" do

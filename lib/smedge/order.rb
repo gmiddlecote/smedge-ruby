@@ -13,13 +13,13 @@ module Smedge
   class Order
     extend T::Sig
 
-    # Per-process counter of orders created per date (yyyyMMdd), used to build
-    # the human-readable order id like ORD-05092026-001. Reset on every load.
+    # Per-process counter of orders created per financial year (FY), used to build
+    # the GST-compliant order id like ORD/24-25/00001. Reset on every load.
     class << self
-      attr_accessor :daily_order_count
+      attr_accessor :fy_order_count
     end
 
-    @daily_order_count = Hash.new(0)
+    @fy_order_count = Hash.new(0)
 
     sig { returns(String) }
     attr_accessor :order_id
@@ -45,6 +45,10 @@ module Smedge
     sig { returns(Money) }
     attr_accessor :discount
 
+    # GST fields
+    sig { returns(T.nilable(String)) }
+    attr_accessor :place_of_supply
+
     # date is a "dd-mm-yyyy" string; discount is an amount in paise.
     sig { params(date: String, client: Client, discount: Integer).void }
     def initialize(date, client, discount = 0)
@@ -62,6 +66,7 @@ module Smedge
         printed: false,
         delivered: false
       }
+      @place_of_supply = client.state
     rescue ArgumentError => e
       raise Smedge::Error, "Error: #{e.message}"
     end
@@ -104,29 +109,6 @@ module Smedge
         note: "Auto-applied to client credit",
         order_id: id || @order_id
       )
-    end
-
-    # Sum of payments received against this order.
-    def total_received
-      @income.sum(&:amount)
-    end
-
-    # Sum of all line items (quantity x rate) before any discount.
-    def total_amount_before_discount
-      @items.map(&:total).reduce(Smedge::Utils::CurrencyFormatter.new_money(0), :+)
-    end
-
-    def total_amount_after_discount
-      total_amount_before_discount - @discount
-    end
-
-    # What the client still owes after discount and received payments.
-    def balance_due
-      total_amount_after_discount - total_received
-    end
-
-    def add_item(item)
-      @items << item
     end
 
     # Record printing for a specific item in this order
@@ -190,6 +172,103 @@ module Smedge
       (total_delivered.to_f / tp * 100).round(2)
     end
 
+    # Calculate GST for all items based on place of supply
+    sig { void }
+    def calculate_gst
+      @items.each do |item|
+        item.calculate_gst(place_of_supply: @place_of_supply, client_state: @client&.state)
+      end
+    end
+
+    # Total taxable value across all items
+    sig { returns(Integer) }
+    def total_taxable_value_paise
+      @items.sum(&:taxable_value_paise)
+    end
+
+    # Total CGST across all items
+    sig { returns(Integer) }
+    def total_cgst_paise
+      @items.sum(&:cgst_paise)
+    end
+
+    # Total SGST across all items
+    sig { returns(Integer) }
+    def total_sgst_paise
+      @items.sum(&:sgst_paise)
+    end
+
+    # Total IGST across all items
+    sig { returns(Integer) }
+    def total_igst_paise
+      @items.sum(&:igst_paise)
+    end
+
+    # Total GST across all items
+    sig { returns(Integer) }
+    def total_gst_paise
+      @items.sum(&:total_gst_paise)
+    end
+
+    # Total with GST across all items
+    sig { returns(Integer) }
+    def total_with_gst_paise
+      @items.sum(&:total_with_gst_paise)
+    end
+
+    # Attach a received payment to this order. Payments linked to another
+    # order (or explicitly tagged for a different one) are rejected.
+    def add_payment(income)
+      expected_order_id = id || @order_id
+      if income.order_id && income.order_id != expected_order_id
+        raise Smedge::Error, "Receipt order ID mismatch"
+      end
+
+      @income << income
+    end
+
+    # Spend the client's available credit against the remaining balance,
+    # recording the spent amount as an auto-applied credit payment.
+    def apply_client_credit
+      amount_to_cover = balance_due
+      return if amount_to_cover <= 0
+
+      credit_used_amount = client.use_credit(amount_to_cover)
+      return if credit_used_amount.cents <= 0
+
+      @income << Income.new(
+        client: @client,
+        amount: credit_used_amount.cents,
+        date: Date.today.strftime("%d-%m-%Y"),
+        mode: "credit",
+        note: "Auto-applied to client credit",
+        order_id: id || @order_id
+      )
+    end
+
+    # Sum of payments received against this order.
+    def total_received
+      @income.sum(&:amount)
+    end
+
+    # Sum of all line items (quantity x rate) before any discount.
+    def total_amount_before_discount
+      @items.map(&:total).reduce(Smedge::Utils::CurrencyFormatter.new_money(0), :+)
+    end
+
+    def total_amount_after_discount
+      total_amount_before_discount - @discount
+    end
+
+    # What the client still owes after discount and received payments.
+    def balance_due
+      total_amount_after_discount - total_received
+    end
+
+    def add_item(item)
+      @items << item
+    end
+
     def display_order
       pastel = Pastel.new
       print pastel.white("\nOrder: ")
@@ -198,6 +277,9 @@ module Smedge
       print pastel.on_blue("#{@date.strftime("%d-%b-%Y")} ")
       print pastel.white("Client: ")
       print pastel.on_blue(client.name.to_s)
+      puts "  GSTIN: #{client.gstin}" if client.gst_registered?
+      puts "  State: #{client.state}" if client.state
+      puts "  Place of Supply: #{place_of_supply}" if place_of_supply
       print "\n\n"
       return puts "No order items" if @items.empty?
 
@@ -206,7 +288,7 @@ module Smedge
       # Calculate grand total
       grand_total = @items.sum { |item| item.quantity * item.rate }
 
-      # Add seperator and total row
+      # Add separator and total row
       rows << :separator
       rows << ["", "", "Grand Total", pastel.white(Utils::CurrencyFormatter.format_money_in_indian_style(Money.new(grand_total)))]
       unless @discount.zero?
@@ -214,6 +296,24 @@ module Smedge
         rows << ["", "", pastel.white("Net Total"), pastel.white(Utils::CurrencyFormatter.format_money_in_indian_style(total_amount_after_discount))]
       end
       puts render_table(rows)
+
+      # GST Summary
+      if total_gst_paise > 0
+        puts "\n  GST Summary:"
+        puts "  Taxable Value: #{Utils::CurrencyFormatter.format_money_in_indian_style(Money.new(total_taxable_value_paise))}"
+        puts "  CGST: #{Utils::CurrencyFormatter.format_money_in_indian_style(Money.new(total_cgst_paise))}"
+        puts "  SGST: #{Utils::CurrencyFormatter.format_money_in_indian_style(Money.new(total_sgst_paise))}"
+        puts "  IGST: #{Utils::CurrencyFormatter.format_money_in_indian_style(Money.new(total_igst_paise))}"
+        puts "  Total GST: #{Utils::CurrencyFormatter.format_money_in_indian_style(Money.new(total_gst_paise))}"
+        puts "  Grand Total (with GST): #{Utils::CurrencyFormatter.format_money_in_indian_style(Money.new(total_with_gst_paise))}"
+      end
+
+      # Printing/Delivery Summary
+      if total_printed > 0 || total_delivered > 0
+        puts "\n  Production Summary:"
+        puts "  Total Printed: #{total_printed} (#{overall_print_progress}%)"
+        puts "  Total Delivered: #{total_delivered} (#{overall_delivery_progress}%)"
+      end
     end
 
     private
@@ -244,12 +344,17 @@ module Smedge
 
     public
 
-    # Build "ORD-DDMMYYYY-SSS" using a per-date serial number.
+    # Build "ORD/YY-YY/NNNNN" using a per-financial-year serial number.
     def generate_order_id
-      key = date.strftime("%d%m%Y")
-      self.class.daily_order_count[key] += 1
-      serial = format("%03d", self.class.daily_order_count[key])
-      @order_id = "ORD-#{key}-#{serial}"
+      fy_start_year = date.month >= 4 ? date.year : date.year - 1
+      fy_end_year = fy_start_year + 1
+      fy_suffix = "#{fy_start_year.to_s[-2, 2]}-#{fy_end_year.to_s[-2, 2]}"
+
+      fy_key = "FY#{fy_suffix}"
+      self.class.fy_order_count ||= Hash.new(0)
+      self.class.fy_order_count[fy_key] += 1
+      serial = format("%05d", self.class.fy_order_count[fy_key])
+      @order_id = "ORD/#{fy_suffix}/#{serial}"
     end
   end
 end

@@ -18,17 +18,38 @@ module Smedge
     sig { returns(T.nilable(String)) }
     attr_accessor :email
 
+    # GST fields
+    sig { returns(T.nilable(String)) }
+    attr_accessor :gstin
+
+    sig { returns(T.nilable(String)) }
+    attr_accessor :state
+
+    sig { returns(T.nilable(String)) }
+    attr_accessor :address
+
+    sig { returns(T.nilable(String)) }
+    attr_accessor :city
+
+    sig { returns(T.nilable(String)) }
+    attr_accessor :pincode
+
     sig { returns(T::Array[Income]) }
     attr_reader :credits
 
     sig { returns(T::Array[Expense]) }
     attr_reader :debits
 
-    sig { params(name: String, email: T.nilable(String), id: T.nilable(Integer)).void }
-    def initialize(name, email = nil, id = nil)
+    sig { params(name: String, email: T.nilable(String), id: T.nilable(Integer), gstin: T.nilable(String), state: T.nilable(String), address: T.nilable(String), city: T.nilable(String), pincode: T.nilable(String)).void }
+    def initialize(name, email = nil, id = nil, gstin: nil, state: nil, address: nil, city: nil, pincode: nil)
       @id = id
       @name = name
       @email = email
+      @gstin = gstin
+      @state = state
+      @address = address
+      @city = city
+      @pincode = pincode
       @credits = T.let([], T::Array[Income])
       @debits = T.let([], T::Array[Expense])
     end
@@ -81,11 +102,29 @@ module Smedge
       used
     end
 
+    # Check if client is GST registered
+    sig { returns(T::Boolean) }
+    def gst_registered?
+      !@gstin.nil? && !@gstin.strip.empty?
+    end
+
+    # Get state code for GST (first 2 digits of GSTIN)
+    sig { returns(T.nilable(String)) }
+    def state_code
+      return nil unless gst_registered?
+      @gstin[0, 2]
+    end
+
     sig { void }
     def details
       puts "Client ID: #{@id}" if @id
       puts "Client name: #{@name}"
       puts "Email: #{@email}" if @email
+      puts "GSTIN: #{@gstin}" if @gstin
+      puts "State: #{@state}" if @state
+      puts "Address: #{@address}" if @address
+      puts "City: #{@city}" if @city
+      puts "Pincode: #{@pincode}" if @pincode
       puts "Available credit: #{available_credit.format}"
       puts "Total debits: #{@debits.sum(Money.new(0), &:amount).format}"
     end
