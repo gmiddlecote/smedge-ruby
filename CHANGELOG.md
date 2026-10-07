@@ -1,6 +1,12 @@
 ## [Unreleased]
 
 ### Added
+- **Customer Edit Functionality**:
+  - New `GET /clients/:id/edit` route to display edit form with all GST fields
+  - New `POST /clients/:id` route to update customer with all GST fields
+  - Edit form includes: GSTIN, state, address, city, pincode
+  - "Edit" link added to customers list view
+  - Updated `customers_new.erb` with all GST fields for consistency
 - **GST-Compliant Order Numbers**: Order IDs now follow GST format `ORD/YY-YY/NNNNN` (e.g., `ORD/25-26/00001`) with financial year (Apr-Mar) based serial numbers
 - **Per-Line-Item Printing & Delivery Tracking**:
   - `OrderItem#record_printing(quantity, date, note)` and `OrderItem#record_delivery(quantity, date, note)`
