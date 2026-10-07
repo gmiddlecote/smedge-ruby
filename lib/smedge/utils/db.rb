@@ -27,7 +27,10 @@ module Smedge
       end
 
       @db_path = path
-      @db ||= T.let(Sequel.sqlite(path), Sequel::Database)
+      @db ||= T.let(
+        Sequel.sqlite(path == ":memory:" ? "file::memory:?cache=shared" : path, foreign_keys: true),
+        Sequel::Database
+      )
     end
 
     sig { returns(String) }
@@ -35,59 +38,65 @@ module Smedge
       ENV.fetch("SMEDGE_DB", DEFAULT_DB_PATH)
     end
 
-    # Ensure the SQLite schema exists and is up to date (adds newer columns and
-    # renames legacy ones). Called at startup by both CLI and web app.
     sig { void }
     def init_db
-      db.create_table? :clients do
-        primary_key :id
-        String :name, null: false, unique: true
-        String :email
-      end
+      # Enable foreign key enforcement
+      db.run("PRAGMA foreign_keys = ON")
 
-      db.create_table? :orders do
-        primary_key :id
-        foreign_key :client_id, :clients, on_delete: :cascade
-        Date :date, null: false
-        Integer :discount_paise, null: false, default: 0
-      end
+      # Run migrations
+      run_migrations
 
-      db.create_table? :order_items do
-        primary_key :id
-        foreign_key :order_id, :orders, on_delete: :cascade
-        String :description, null: false
-        Integer :quantity, null: false
-        Integer :rate_paise, null: false
-      end
-
-      db.create_table? :transactions do
-        primary_key :id
-        foreign_key :client_id, :clients, on_delete: :cascade
-        Integer :order_id
-        String :type, null: false # 'income' or 'expense'
-        Integer :amount_paise, null: false
-        String :currency, null: false, default: "INR"
-        Date :date
-        String :mode
-        String :note
-      end
-
-      transaction_columns = db[:transactions].columns
-      unless transaction_columns.include?(:order_id)
-        db.alter_table(:transactions) { add_column :order_id, Integer }
-      end
-      migrate_order_refs_to_ids! if transaction_columns.include?(:order_ref)
-      add_index_unless_exists(:transactions, :client_id)
-      add_index_unless_exists(:transactions, :order_id)
+      # Legacy migration helpers for existing databases
       migrate_cents_to_paise!
     end
 
     sig { void }
     def reset_schema
-      db.drop_table? :order_items, :orders, :transactions, :clients
+      warn "[DB] Resetting schema, dropping tables..."
+      # Drop in reverse dependency order to avoid FK constraint errors
+      db.drop_table? :order_items
+      db.drop_table? :orders
+      db.drop_table? :transactions
+      db.drop_table? :credit_ledger_entries
+      db.drop_table? :clients
+      db.drop_table? :schema_migrations
+      warn "[DB] Tables dropped, reinitializing..."
       init_db
     end
 
+    # Run all pending migrations
+    sig { void }
+    def run_migrations
+      # Migration directory is at project_root/db/migrate
+      # __dir__ = /path/to/project/lib/smedge/utils
+      # So we need to go up 3 levels: ../../../db/migrate
+      migration_dir = File.expand_path(File.join(__dir__, "..", "..", "..", "db", "migrate"))
+      warn "[DB] Migration dir: #{migration_dir}, exists: #{Dir.exist?(migration_dir)}"
+      return unless Dir.exist?(migration_dir)
+
+      # Create schema_migrations table if it doesn't exist
+      db.create_table?(:schema_migrations) do
+        String :version, null: false, primary_key: true
+        DateTime :applied_at, default: Sequel::CURRENT_TIMESTAMP
+      end
+
+      applied = db[:schema_migrations].select_map(:version)
+      warn "[DB] Applied migrations: #{applied}"
+      files = Dir.glob(File.join(migration_dir, "*.rb"))
+      warn "[DB] Migration files: #{files}"
+      Dir.glob(File.join(migration_dir, "*.rb")).each do |file|
+        version = File.basename(file, ".rb").split("_").first
+        warn "[DB] Processing migration: #{file} (version: #{version})"
+        next if applied.include?(version)
+
+        # Execute migration directly
+        db.transaction do
+          db.instance_eval(File.read(file), file)
+        end
+        db[:schema_migrations].insert(version: version, applied_at: Sequel::CURRENT_TIMESTAMP)
+        warn "[DB] Applied migration: #{version}"
+      end
+    end
     sig { returns(T::Array[Client]) }
     def load_clients
       load_clients_paginated(limit: 1000, offset: 0)
@@ -281,6 +290,12 @@ module Smedge
       order_date = Utils::DateParser.parse(date)
       raise Smedge::Error, "Invalid sale date: #{date.inspect}" unless order_date
       
+      # Generate deterministic order_id like the Order model does
+      date_key = order_date.strftime("%d%m%Y")
+      existing_count = db[:orders].where(date: order_date).count
+      serial = format("%03d", existing_count + 1)
+      order_id_str = "ORD-#{date_key}-#{serial}"
+      
       db.transaction do
         order = Order.new(date, client, discount)
         items.each do |item|
@@ -292,9 +307,11 @@ module Smedge
         order_id = db[:orders].insert(
           client_id: T.must(client.id),
           date: order_date,
-          discount_paise: order.discount.cents
+          discount_paise: order.discount.cents,
+          order_id: order_id_str
         )
         order.id = order_id
+        order.order_id = order_id_str
         items.each do |item|
           db[:order_items].insert(
             order_id: order_id,
@@ -375,10 +392,22 @@ module Smedge
         client_id = client_ids[order_hash["client"]]
         next unless client_id
 
+        # Generate deterministic order_id like the Order model does
+        date_str = order_hash["date"]
+        date = parse_date(date_str)
+        next unless date
+        date_key = date.strftime("%d%m%Y")
+        
+        # Count existing orders for this date to generate serial
+        existing_count = db[:orders].where(date: date).count
+        serial = format("%03d", existing_count + 1)
+        order_id_str = "ORD-#{date_key}-#{serial}"
+
         order_id = db[:orders].insert(
           client_id: client_id,
-          date: parse_date(order_hash["date"]),
-          discount_paise: order_hash["discount"].to_i
+          date: date,
+          discount_paise: order_hash["discount"].to_i,
+          order_id: order_id_str
         )
         (order_hash["items"] || []).each do |item|
           db[:order_items].insert(

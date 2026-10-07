@@ -64,7 +64,7 @@ module Smedge
         remaining -= consumed_paise
       end
 
-      raise Smedge::Error, "Insufficient credit" if remaining > 0
+      raise Smedge::Error, "Insufficient credit" if remaining.positive?
 
       consumed
     end
@@ -72,13 +72,13 @@ module Smedge
     # Get all unconsumed credit entries for a client
     sig { params(client: Client).returns(T::Array[Income]) }
     def self.available_entries(client)
-      client.credits.select { |c| c.amount.cents > 0 && !c.auto_applied_credit? }
+      client.credits.select { |c| c.amount.cents.positive? && !c.auto_applied_credit? }
     end
 
     # Calculate total available credit
     sig { params(client: Client).returns(Money) }
     def self.total_available(client)
-      client.credits.sum(Money.new(0)) { |c| c.amount }
+      client.credits.sum(Money.new(0), &:amount)
     end
 
     # Credit flow calculation for orders (used by web dashboard)

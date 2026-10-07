@@ -19,7 +19,7 @@ module Smedge
         order: Order
       ).returns(Income)
     end
-    def self.record_payment(client:, amount_paise:, date:, mode:, note: nil, order:)
+    def self.record_payment(client:, amount_paise:, date:, mode:, order:, note: nil)
       raise Smedge::Error, "Amount must be positive" if amount_paise <= 0
       raise Smedge::Error, "Order required" unless order
 
@@ -53,16 +53,16 @@ module Smedge
     sig { params(order: Order, amount_paise: Integer).void }
     def self.apply_overpayment(order, amount_paise)
       balance = order.balance_due.cents
-      if amount_paise > balance
-        overpayment = amount_paise - balance
-        CreditService.record_credit(
-          client: order.client,
-          amount_paise: overpayment,
-          date: Date.today.strftime("%d-%m-%Y"),
-          mode: "credit",
-          note: "Overpayment on order #{order.order_id}"
-        )
-      end
+      return unless amount_paise > balance
+      overpayment = amount_paise - balance
+      CreditService.record_credit(
+        client: order.client,
+        amount_paise: overpayment,
+        date: Date.today.strftime("%d-%m-%Y"),
+        mode: "credit",
+        note: "Overpayment on order #{order.order_id}"
+      )
+      
     end
 
     # Get all payments for an order

@@ -2,6 +2,9 @@
 # typed: strict
 
 require "bigdecimal"
+require_relative "services/credit_service"
+require_relative "services/order_service"
+require_relative "services/payment_service"
 
 module Smedge
   module Services
@@ -23,7 +26,7 @@ module Smedge
 
         raise Smedge::Error, "Item ##{i + 1}: description is required" if description.empty?
 
-        { description: description, quantity: Integer(quantity), rate: rupees_to_paise(rate) }
+        { description: description, quantity: Integer(quantity), rate: CreditService.rupees_to_paise(rate) }
       end
     rescue ArgumentError
       raise Smedge::Error, "Item quantity must be a whole number"
@@ -31,24 +34,13 @@ module Smedge
 
     sig { params(value: T.untyped).returns(Integer) }
     def self.rupees_to_paise(value)
-      value = value.to_s.strip
-      raise Smedge::Error, "Invalid amount: #{value.inspect}" if value.empty?
-
-      (BigDecimal(value) * 100).round
-    rescue ArgumentError
-      raise Smedge::Error, "Invalid amount: #{value.inspect}"
+      CreditService.rupees_to_paise(value)
     end
 
+    # Credit flow calculation moved to CreditService
     sig { params(client: Client, orders: T::Array[Order]).returns(T::Array[T::Hash[Symbol, T.untyped]]) }
     def self.calculate_credit_flow(client, orders)
-      running = client.available_credit
-      orders.map do |order|
-        balance = order.balance_due
-        used = [balance, running].min
-        before = running
-        running -= used
-        { order: order, credit_before: before, credit_after: running, balance_due: balance }
-      end
+      CreditService.calculate_credit_flow(client, orders)
     end
   end
 end

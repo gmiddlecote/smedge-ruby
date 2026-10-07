@@ -2,6 +2,7 @@
 
 require "rack/test"
 require "base64"
+require "tempfile"
 require_relative "../web/app"
 
 RSpec.describe Smedge::Web do
@@ -9,7 +10,9 @@ RSpec.describe Smedge::Web do
 
   around do |example|
     original = ENV.fetch("SMEDGE_DB", nil)
-    ENV["SMEDGE_DB"] = ":memory:"
+    temp_db = Tempfile.new(["smedge_test_", ".sqlite"])
+    temp_db.close
+    ENV["SMEDGE_DB"] = temp_db.path
     ENV["SMEDGE_AUTH_USERNAME"] = "admin"
     ENV["SMEDGE_AUTH_PASSWORD"] = "changeme"
     Smedge::Db.reset_schema
@@ -19,6 +22,7 @@ RSpec.describe Smedge::Web do
     ENV["SMEDGE_DB"] = original
     ENV.delete("SMEDGE_AUTH_USERNAME")
     ENV.delete("SMEDGE_AUTH_PASSWORD")
+    temp_db&.unlink
   end
 
   def app

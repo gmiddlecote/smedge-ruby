@@ -53,7 +53,7 @@ module Smedge
       workflow = {
         awaiting_design: [],
         awaiting_material: [:awaiting_design],
-        awaiting_print: [:awaiting_design, :awaiting_material],
+        awaiting_print: %i[awaiting_design awaiting_material],
         printing: [:awaiting_print],
         printed: [:printing],
         delivered: [:printed]

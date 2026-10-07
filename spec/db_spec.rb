@@ -1,13 +1,18 @@
 # frozen_string_literal: true
 
+require "tempfile"
+
 RSpec.describe Smedge::Db do
   around do |example|
     original = ENV.fetch("SMEDGE_DB", nil)
-    ENV["SMEDGE_DB"] = ":memory:"
+    temp_db = Tempfile.new(["smedge_test_", ".sqlite"])
+    temp_db.close
+    ENV["SMEDGE_DB"] = temp_db.path
     Smedge::Db.reset_schema
     example.run
   ensure
     ENV["SMEDGE_DB"] = original
+    temp_db&.unlink
   end
 
   it "seeds clients, transactions, orders and order items from orders.yaml" do

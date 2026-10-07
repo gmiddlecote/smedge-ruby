@@ -24,9 +24,8 @@ module Smedge
       set :host_authorization, { permitted_hosts: [] }
       set :show_exceptions, false
       enable :sessions
-      # Start the SQLite schema/migrations once at boot (this covers both the
-      # `ruby web/app.rb` and `rackup config.ru` entry points).
-      Smedge::Db.init_db
+      # Database initialization is deferred to first request to allow tests
+      # to control schema initialization via Smedge::Db.reset_schema
     end
 
     # HTTP Basic Authentication - runs before each request
@@ -357,7 +356,7 @@ module Smedge
       # never carries over state from another.
       def reload_all
         clients = Smedge::Db.load_clients
-        transactions = Smedge::Db.load_transactions(clients)
+        Smedge::Db.load_transactions(clients)
         [clients, Smedge::Db.load_orders(clients)]
       end
 
