@@ -3,6 +3,7 @@ PATH
   specs:
     smedge (0.1.0)
       bigdecimal (~> 3.1, >= 3.1.9)
+      csv (~> 3.2)
       fiddle (~> 1.1)
       money (~> 6.19)
       pastel (~> 0.8.0)
@@ -18,6 +19,7 @@ GEM
     base64 (0.3.0)
     bigdecimal (3.2.2)
     concurrent-ruby (1.3.5)
+    csv (3.3.6)
     diff-lcs (1.6.2)
     fiddle (1.1.8)
     i18n (1.14.7)

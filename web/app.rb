@@ -286,7 +286,7 @@ module Smedge
 
     not_found do
       status 404
-      if request.xhr? || request.accept.include?("application/json")
+      if request.xhr? || request.accept.include?("application/json") || request.path_info.start_with?("/api/")
         { error: "Not found", path: request.path }.to_json
       else
         erb :not_found

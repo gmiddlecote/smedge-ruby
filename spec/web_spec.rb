@@ -131,7 +131,7 @@ RSpec.describe Smedge::Web do
 
   it "exports a client statement as CSV" do
     client = Smedge::Db.load_clients.find { |c| c.name == "Ron" }
-    get "/clients/#{T.must(client.id)}/export"
+    get "/clients/#{T.must(client.id)}/export", {}, auth_env
     expect(last_response).to be_ok
     expect(last_response.content_type).to include("text/csv")
     expect(last_response.body.lines.first).to eq("Date,Type,Amount,Mode,Note\n")
@@ -141,13 +141,13 @@ RSpec.describe Smedge::Web do
     client, = Smedge::Db.find_or_create_client("CSV Client", "csv@example.com")
     Smedge::Db.create_transaction(client: client, amount_paise: 50_000, date: "05-09-2026",
                                   mode: "bank", note: "advance, paid")
-    get "/clients/#{client.id}/export"
+    get "/clients/#{client.id}/export", {}, auth_env
     expect(last_response.body).to include("\"advance, paid\"")
   end
 
   it "serves a client summary via the API" do
     client = Smedge::Db.load_clients.find { |c| c.name == "Ron" }
-    get "/api/clients/#{T.must(client.id)}"
+    get "/api/clients/#{T.must(client.id)}", {}, auth_env
     expect(last_response).to be_ok
     expect(last_response.content_type).to include("application/json")
 
@@ -159,7 +159,7 @@ RSpec.describe Smedge::Web do
 
   it "serves a client's orders via the API" do
     client = Smedge::Db.load_clients.find { |c| c.name == "Ron" }
-    get "/api/clients/#{T.must(client.id)}/orders"
+    get "/api/clients/#{T.must(client.id)}/orders", {}, auth_env
     expect(last_response).to be_ok
 
     orders = JSON.parse(last_response.body)["orders"]
@@ -171,7 +171,7 @@ RSpec.describe Smedge::Web do
   it "serves an order detail via the API" do
     client = Smedge::Db.load_clients.find { |c| c.name == "Ron" }
     order = Smedge::Db.load_orders([client]).first
-    get "/api/orders/#{T.must(order.id)}"
+    get "/api/orders/#{T.must(order.id)}", {}, auth_env
     expect(last_response).to be_ok
 
     body = JSON.parse(last_response.body)
@@ -181,11 +181,11 @@ RSpec.describe Smedge::Web do
   end
 
   it "returns JSON 404 for an unknown client or order" do
-    get "/api/clients/99999"
+    get "/api/clients/99999", {}, { "HTTP_AUTHORIZATION" => "Basic #{Base64.strict_encode64("admin:changeme")}", "HTTP_ACCEPT" => "application/json" }
     expect(last_response.status).to eq(404)
     expect(JSON.parse(last_response.body)).to include("error")
 
-    get "/api/orders/99999"
+    get "/api/orders/99999", {}, { "HTTP_AUTHORIZATION" => "Basic #{Base64.strict_encode64("admin:changeme")}", "HTTP_ACCEPT" => "application/json" }
     expect(last_response.status).to eq(404)
     expect(JSON.parse(last_response.body)).to include("error")
   end

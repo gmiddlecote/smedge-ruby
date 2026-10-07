@@ -38,6 +38,7 @@ Gem::Specification.new do |spec|
 
   # Runtime dependencies
   spec.add_dependency "bigdecimal", "~> 3.1", ">= 3.1.9"
+  spec.add_dependency "csv", "~> 3.2"
   spec.add_dependency "fiddle", "~> 1.1"
   spec.add_dependency "money", "~> 6.19"
   spec.add_dependency "pastel", "~> 0.8.0"
