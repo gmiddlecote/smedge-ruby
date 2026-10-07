@@ -29,6 +29,7 @@ lib/smedge/
   ├── transaction.rb       # Base class for money movements
   ├── income.rb            # Money received (payment)
   ├── expense.rb           # Money paid out (debit)
+  ├── pdf_generator.rb     # Receipt & GST invoice PDFs (prawn)
   ├── services/
   │   ├── credit_service.rb    # Credit ledger, consumption, queries
   │   ├── order_service.rb     # Order lifecycle, status transitions, credit application
@@ -40,6 +41,7 @@ lib/smedge/
        └── db.rb                  # SQLite persistence (Sequel ORM)
 web/
   ├── app.rb               # Sinatra web app
+  ├── fonts/               # Bundled DejaVu TTFs for PDF ₹ glyph
   └── views/               # ERB templates
 db/
   └── migrate/             # Sequel migration files
@@ -76,6 +78,7 @@ db/
 | CLI commands | `main.rb` |
 | Web routes | `web/app.rb` |
 | Web UI | `web/views/*.erb` |
+| Receipt/invoice PDFs | `lib/smedge/pdf_generator.rb`, `web/fonts/` |
 | Tests | `spec/*.rb` |
 
 ## Development Commands
@@ -132,6 +135,15 @@ Tests use in-memory SQLite (`:memory:`) and seed from `orders.yaml`.
 | `GET /api/orders/:id` | Full order detail with items and payments |
 
 > **Note**: JSON API endpoints are NOT authenticated yet - add customer auth before production use.
+
+## Document Download Endpoints
+
+| Endpoint | Description |
+|----------|-------------|
+| `GET /orders/:id/receipt` | Receipt PDF: order date, items with GST, payment dates, delivery log |
+| `GET /orders/:id/invoice` | Tax invoice PDF for orders with no linked payments (GST format) |
+
+Both are HTTP Basic Auth protected and served by `Smedge::PdfGenerator`.
 
 ## Error Handling
 

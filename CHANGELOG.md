@@ -1,6 +1,11 @@
 ## [Unreleased]
 
 ### Added
+- **Downloadable Receipt & Invoice PDFs**:
+  - New `GET /orders/:id/receipt` route: A4 PDF showing order date, itemized GST breakdown, payment dates/modes, and delivery log with quantities
+  - New `GET /orders/:id/invoice` route: GST tax invoice with seller/buyer blocks, HSN/SAC codes, CGST/SGST/IGST breakdown, payment terms, bank details, and signatory line
+  - "Download Receipt"/"Download Invoice" buttons on the order detail page; the invoice button only appears while the order has no linked payments
+  - `Smedge::PdfGenerator` module (prawn + prawn-table) with bundled DejaVu fonts (`web/fonts/`) for ₹ glyph support
 - **Customer Edit Functionality**:
   - New `GET /clients/:id/edit` route to display edit form with all GST fields
   - New `POST /clients/:id` route to update customer with all GST fields
@@ -52,6 +57,10 @@
 - **Error Logging**: All errors logged with path, method, params, backtrace
 
 ### Fixed
+- **Order Detail Page**: View referenced non-existent `Order#total` and `OrderItem#description`; now uses `total_amount_before_discount` and `item.item`
+- **Single-Order Loading**: `Db.find_order` now loads the stored GST order ID, `place_of_supply`, GST line-item fields, printed/delivered quantities, and delivery logs (previously missing, producing wrong receipt/invoice data)
+- **Order List IDs**: `Db.load_orders` now reads the stored GST order ID instead of regenerating it, keeping list and detail pages consistent
+- **Seed Order IDs**: `seed_from_yaml` now stores GST-format `ORD/YY-YY/NNNNN` IDs (was still writing the legacy `ORD-DDMMYYYY-SSS` format), so `order_id_for_ref` can resolve seeded orders
 - **Double Migration Issue**: `seed_from_yaml` no longer calls `reset_schema`, preventing duplicate migration runs
 - **FK Drop Order**: `reset_schema` disables FKs before dropping tables in reverse dependency order
 - **In-Memory DB Sharing**: `:memory:` with `cache=shared` for test isolation
