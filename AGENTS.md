@@ -149,6 +149,12 @@ All errors are logged with context (path, method, params, backtrace).
 - Commit directly to main after tests pass
 - Remote branches are cleaned up periodically
 
+## Protected Branches
+
+| Branch | Protection | Purpose |
+|--------|------------|---------|
+| `2025-app` | **Protected** - no force pushes, no deletions | Read-only archive of 2025 application state. **DO NOT DELETE.** |
+
 ---
 
 *Last updated: 2026-10-07*
