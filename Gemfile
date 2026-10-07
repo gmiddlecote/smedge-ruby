@@ -19,6 +19,8 @@ group :development do
 end
 
 group :web do
+  gem "prawn", "~> 2.4"
+  gem "prawn-table", "~> 0.2"
   gem "puma", ">= 6.4"
   gem "rackup", "~> 2.2"
   gem "sinatra", "~> 4.0"

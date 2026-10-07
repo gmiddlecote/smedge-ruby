@@ -20,6 +20,8 @@ Metrics/PerceivedComplexity:
 
 Metrics/BlockLength:
   Max: 200
+  Exclude:
+    - "spec/**/*"
 
 Metrics/ClassLength:
   Max: 400

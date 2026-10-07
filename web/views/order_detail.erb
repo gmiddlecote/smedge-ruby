@@ -2,6 +2,12 @@
 <h1 style="display: flex; align-items: center; gap: 10px;">
   Order <%= @order.order_id %>
   <a class="muted" style="font-size: 0.5em; text-decoration: none;" href="/clients/<%= @order.client.id %>">← Back to Client</a>
+  <div style="margin-left: auto; display: flex; gap: 8px;">
+    <a class="button small" href="/orders/<%= @order.id %>/receipt" target="_blank">Download Receipt</a>
+    <% if @payments.empty? %>
+      <a class="button small" href="/orders/<%= @order.id %>/invoice" target="_blank">Download Invoice</a>
+    <% end %>
+  </div>
 </h1>
 
 <div class="cards">
@@ -11,7 +17,7 @@
   </div>
   <div class="card">
     <div class="card-label">Total Amount</div>
-    <div class="card-value"><%= money(@order.total) %></div>
+    <div class="card-value"><%= money(@order.total_amount_before_discount) %></div>
   </div>
   <div class="card">
     <div class="card-label">Discount</div>
@@ -36,7 +42,7 @@
   <tbody>
     <% @order.items.each do |item| %>
       <tr>
-        <td><%= h(item.description) %></td>
+        <td><%= h(item.item) %></td>
         <td class="num"><%= item.quantity %></td>
         <td class="num"><%= money(item.rate) %></td>
         <td class="num"><%= money(item.total) %></td>

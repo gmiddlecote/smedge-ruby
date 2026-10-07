@@ -179,9 +179,29 @@ module Smedge
 
       order = Order.new(row[:date].strftime("%d-%m-%Y"), client, row[:discount_paise])
       order.id = row[:id]
+      order.order_id = row[:order_id] if row[:order_id]
+      order.place_of_supply = row[:place_of_supply]
       db[:order_items].where(order_id: row[:id]).order(:id).each do |item_row|
         item = OrderItem.new(item_row[:description], item_row[:quantity])
         item.setrate(item_row[:rate_paise])
+        item.quantity_printed = item_row[:quantity_printed] || 0
+        item.quantity_delivered = item_row[:quantity_delivered] || 0
+        item.printing_completed = item_row[:printing_completed] || false
+        item.delivery_completed = item_row[:delivery_completed] || false
+        item.hsn_code = item_row[:hsn_code]
+        item.sac_code = item_row[:sac_code]
+        item.gst_rate_percent = item_row[:gst_rate_percent] || 18
+        item.taxable_value_paise = item_row[:taxable_value_paise] || 0
+        item.cgst_paise = item_row[:cgst_paise] || 0
+        item.sgst_paise = item_row[:sgst_paise] || 0
+        item.igst_paise = item_row[:igst_paise] || 0
+        db[:delivery_logs].where(order_item_id: item_row[:id]).order(:delivered_date, :id).each do |log|
+          item.delivery_logs << {
+            quantity: log[:quantity_delivered],
+            date: log[:delivered_date]&.strftime("%d-%m-%Y"),
+            note: log[:note]
+          }
+        end
         order.add_item(item)
       end
       order
@@ -228,9 +248,9 @@ module Smedge
     end
 
     # Rebuild Order objects with their items and re-attach linked payments.
-    # Order ids are regenerated deterministically (the counter is reset here)
-    # so the ids shown on screen line up with the ORD-* references stored on
-    # payments, keeping the linkage stable across reloads.
+    # The GST-compliant order_id stored on each row is authoritative; the
+    # in-memory fy_order_count is still advanced so newly created orders
+    # continue the per-financial-year serial sequence.
     sig { params(clients: T::Array[Client]).returns(T::Array[Order]) }
     def load_orders(clients)
       Smedge::Order.fy_order_count = Hash.new(0)
@@ -242,6 +262,7 @@ module Smedge
 
         order = Order.new(row[:date].strftime("%d-%m-%Y"), client, row[:discount_paise])
         order.id = row[:id]
+        order.order_id = row[:order_id] if row[:order_id]
         db[:order_items].where(order_id: row[:id]).order(:id).each do |item_row|
           item = OrderItem.new(item_row[:description], item_row[:quantity])
           item.setrate(item_row[:rate_paise])
@@ -442,16 +463,24 @@ module Smedge
         client_id = client_ids[order_hash["client"]]
         next unless client_id
 
-        # Generate deterministic order_id like the Order model does
+        # Generate a GST-compliant order_id (ORD/YY-YY/NNNNN) like create_order
         date_str = order_hash["date"]
         date = parse_date(date_str)
         next unless date
-        date_key = date.strftime("%d%m%Y")
-        
-        # Count existing orders for this date to generate serial
-        existing_count = db[:orders].where(date: date).count
-        serial = format("%03d", existing_count + 1)
-        order_id_str = "ORD-#{date_key}-#{serial}"
+
+        fy_start_year = date.month >= 4 ? date.year : date.year - 1
+        fy_end_year = fy_start_year + 1
+        fy_suffix = "#{fy_start_year.to_s[-2, 2]}-#{fy_end_year.to_s[-2, 2]}"
+        fy_start = Date.new(fy_start_year, 4, 1)
+        fy_end = Date.new(fy_end_year, 3, 31)
+
+        # Serial counts existing orders in the same financial year
+        existing_count = db[:orders]
+                         .where(Sequel[:date] >= fy_start)
+                         .where(Sequel[:date] <= fy_end)
+                         .count
+        serial = format("%05d", existing_count + 1)
+        order_id_str = "ORD/#{fy_suffix}/#{serial}"
 
         order_id = db[:orders].insert(
           client_id: client_id,

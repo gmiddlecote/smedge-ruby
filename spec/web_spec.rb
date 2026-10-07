@@ -33,6 +33,11 @@ RSpec.describe Smedge::Web do
     { "HTTP_AUTHORIZATION" => "Basic #{Base64.strict_encode64("admin:changeme")}" }
   end
 
+  def first_order_for(client_name)
+    client = Smedge::Db.load_clients.find { |c| c.name == client_name }
+    Smedge::Db.load_orders([T.must(client)]).first
+  end
+
   it "serves the dashboard with summary cards" do
     get "/", {}, auth_env
     expect(last_response).to be_ok
@@ -173,8 +178,7 @@ RSpec.describe Smedge::Web do
   end
 
   it "serves an order detail via the API" do
-    client = Smedge::Db.load_clients.find { |c| c.name == "Ron" }
-    order = Smedge::Db.load_orders([client]).first
+    order = first_order_for("Ron")
     get "/api/orders/#{T.must(order.id)}", {}, auth_env
     expect(last_response).to be_ok
 
@@ -182,6 +186,49 @@ RSpec.describe Smedge::Web do
     expect(body["items"]).to be_an(Array)
     expect(body["items"].first).to include("description", "quantity", "rate", "total")
     expect(body).to include("status_flags", "balance_due")
+  end
+
+  it "serves an order detail page with receipt and invoice links" do
+    order = first_order_for("Ron")
+    get "/orders/#{T.must(order.id)}", {}, auth_env
+    expect(last_response).to be_ok
+    expect(last_response.body).to include(order.order_id, "Download Receipt", "Download Invoice")
+  end
+
+  it "hides the invoice link once an order has linked payments" do
+    client = Smedge::Db.load_clients.find { |c| c.name == "Ron" }
+    order = first_order_for("Ron")
+    Smedge::Db.db[:transactions].insert(
+      client_id: T.must(client.id),
+      order_id: order.id,
+      type: "income",
+      amount_paise: 100_000,
+      date: Date.today,
+      mode: "cash",
+      note: "Test payment"
+    )
+    get "/orders/#{T.must(order.id)}", {}, auth_env
+    expect(last_response).to be_ok
+    expect(last_response.body).to include("Download Receipt")
+    expect(last_response.body).not_to include("Download Invoice")
+  end
+
+  it "downloads an order receipt as a PDF" do
+    order = first_order_for("Ron")
+    get "/orders/#{T.must(order.id)}/receipt", {}, auth_env
+    expect(last_response).to be_ok
+    expect(last_response.headers["Content-Type"]).to eq("application/pdf")
+    expect(last_response.headers["Content-Disposition"]).to include("receipt_")
+    expect(last_response.body[0, 5]).to eq("%PDF-")
+  end
+
+  it "downloads an order invoice as a PDF" do
+    order = first_order_for("Ron")
+    get "/orders/#{T.must(order.id)}/invoice", {}, auth_env
+    expect(last_response).to be_ok
+    expect(last_response.headers["Content-Type"]).to eq("application/pdf")
+    expect(last_response.headers["Content-Disposition"]).to include("invoice_")
+    expect(last_response.body[0, 5]).to eq("%PDF-")
   end
 
   it "returns JSON 404 for an unknown client or order" do

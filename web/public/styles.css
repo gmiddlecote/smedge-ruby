@@ -221,6 +221,8 @@ button, .button {
 
 button:hover, .button:hover { background: var(--accent-dark); color: #fff; }
 
+.button.small { padding: 0.3rem 0.7rem; font-size: 0.8rem; border-radius: 6px; }
+
 button.remove-row {
   background: transparent;
   color: var(--bad);

@@ -7,6 +7,7 @@ require "bigdecimal"
 require "json"
 require "securerandom"
 require_relative "../lib/smedge"
+require_relative "../lib/smedge/pdf_generator"
 
 module Smedge
   # Web interface for Smedge: dashboard, customers, orders, sales and payments.
@@ -112,6 +113,41 @@ module Smedge
         )
       end
       erb :order_detail
+    end
+
+    # Download order receipt as PDF
+    get "/orders/:id/receipt" do
+      @order = Smedge::Db.find_order(params["id"].to_i)
+      halt 404, "Order not found" unless @order
+
+      @payments = Smedge::Db.db[:transactions]
+                               .where(order_id: @order.id, type: "income")
+                               .all.map do |row|
+        Smedge::Income.new(
+          client: @order.client,
+          amount: row[:amount_paise],
+          mode: row[:mode],
+          note: row[:note],
+          date: row[:date]&.strftime("%d-%m-%Y"),
+          order_id: row[:order_id]
+        )
+      end
+
+      pdf = Smedge::PdfGenerator.receipt(@order, @payments)
+      content_type "application/pdf"
+      attachment "receipt_#{@order.order_id.gsub("/", "_")}.pdf"
+      pdf
+    end
+
+    # Download order invoice as PDF (for unpaid orders)
+    get "/orders/:id/invoice" do
+      @order = Smedge::Db.find_order(params["id"].to_i)
+      halt 404, "Order not found" unless @order
+
+      pdf = Smedge::PdfGenerator.invoice(@order)
+      content_type "application/pdf"
+      attachment "invoice_#{@order.order_id.gsub("/", "_")}.pdf"
+      pdf
     end
 
     # List all orders, newest first.
