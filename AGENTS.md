@@ -29,7 +29,10 @@ lib/smedge/
   ├── transaction.rb       # Base class for money movements
   ├── income.rb            # Money received (payment)
   ├── expense.rb           # Money paid out (debit)
-  ├── services.rb          # Business logic helpers
+  ├── services/
+  │   ├── credit_service.rb    # Credit ledger, consumption, queries
+  │   ├── order_service.rb     # Order lifecycle, status transitions, credit application
+  │   └── payment_service.rb   # Payment processing, linking, overpayments
   └── utils/
        ├── currency_formatter.rb  # Indian-style ₹ formatting
        ├── date_parse.rb          # dd-mm-yyyy parsing
@@ -38,16 +41,20 @@ lib/smedge/
 web/
   ├── app.rb               # Sinatra web app
   └── views/               # ERB templates
+db/
+  └── migrate/             # Sequel migration files
 ```
 
 ## Data Model (SQLite via Sequel)
 
 | Table | Key Columns |
 |-------|-------------|
-| `clients` | id, name (unique), email |
-| `orders` | id, client_id (FK), date, discount_paise |
-| `order_items` | id, order_id (FK), description, quantity, rate_paise |
-| `transactions` | id, client_id (FK), order_id (FK), type ('income'/'expense'), amount_paise, currency, date, mode, note |
+| `clients` | id, name (unique), email, created_at, updated_at |
+| `orders` | id, client_id (FK), date, discount_paise, order_id (unique), created_at, updated_at |
+| `order_items` | id, order_id (FK), description, quantity, rate_paise, created_at |
+| `transactions` | id, client_id (FK), order_id (FK), type ('income'/'expense'), amount_paise, currency, date, mode, note, created_at, updated_at |
+| `credit_ledger_entries` | id, client_id (FK), source_income_id (FK), order_id (FK), amount_paise, entry_type ('credit'/'consumption'/'refund'), note, date, created_at |
+| `schema_migrations` | version (PK), applied_at |
 
 ## Conventions
 
@@ -62,7 +69,10 @@ web/
 | Task | Files to Modify |
 |------|----------------|
 | Add domain logic | `lib/smedge/*.rb` |
-| Database schema/migration | `lib/smedge/utils/db.rb` (`init_db`) |
+| Database schema/migration | `lib/smedge/utils/db.rb` (`init_db`), `db/migrate/*.rb` |
+| Credit logic | `lib/smedge/services/credit_service.rb` |
+| Order lifecycle | `lib/smedge/services/order_service.rb` |
+| Payment processing | `lib/smedge/services/payment_service.rb` |
 | CLI commands | `main.rb` |
 | Web routes | `web/app.rb` |
 | Web UI | `web/views/*.erb` |
@@ -133,15 +143,35 @@ Web app has specific handlers:
 
 All errors are logged with context (path, method, params, backtrace).
 
-## Extending the Domain
+## Service Objects
 
-1. Add new model in `lib/smedge/`
-2. Require in `lib/smedge.rb`
-3. Add table in `Db.init_db`
-4. Add CRUD methods in `Db` module
-5. Add routes in `web/app.rb`
-6. Add views in `web/views/`
-7. Write tests in `spec/`
+- **CreditService**: Immutable credit ledger management. Handles credit recording, consumption (oldest-first), and queries. Returns new immutable `Income` entries for each consumption.
+- **OrderService**: Order lifecycle management. Handles creation, status transitions (awaiting_design → awaiting_material → awaiting_print → printing → printed → delivered), credit application, and transition validation.
+- **PaymentService**: Payment processing. Records payments linked to orders or as account credit, handles overpayments creating credit, retrieves payments for orders.
+- **Services.build_items / rupees_to_paise / calculate_credit_flow**: Utility functions delegated to CreditService.
+
+## Credit Ledger System
+
+Credits are now tracked immutably via `CreditService`:
+- **Recording**: `CreditService.record_credit` creates new `Income` entries (mode: cash/bank, order_id: nil)
+- **Consumption**: `CreditService.consume_credit` creates immutable `Income` entries (mode: "credit", note: "Auto-applied to order") linked to orders
+- **Audit Trail**: `credit_ledger_entries` table records every credit event (credit/consumption/refund) with source references
+- **Queries**: `CreditService.available_entries`, `CreditService.total_available`, `CreditService.calculate_credit_flow`
+
+## Database Migrations
+
+Migrations are in `db/migrate/` and run automatically via `Smedge::Db.init_db`:
+- `001_create_schema.rb`: Core tables (clients, orders, order_items, transactions) with FKs, indexes, timestamps
+- `002_add_credit_ledger.rb`: Credit ledger table with FKs and indexes
+
+Run migrations manually: `Sequel::Migrator.run(db, "db/migrate")`
+
+## Migrations + FK Enforcement
+
+- `PRAGMA foreign_keys = ON` enabled on every connection
+- Migrations run automatically via `Smedge::Db.init_db` (called at boot by CLI/web)
+- `schema_migrations` table tracks applied versions
+- `reset_schema` drops all tables in FK-safe order and re-runs migrations
 
 ## Git Workflow
 
