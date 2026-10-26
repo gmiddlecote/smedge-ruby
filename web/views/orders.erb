@@ -9,8 +9,10 @@
         <th>Order</th>
         <th>Date</th>
         <th>Customer</th>
+        <th>GST Invoice #</th>
         <th>Items</th>
         <th>Net Total</th>
+        <th>Invoice</th>
       </tr>
     </thead>
     <tbody>
@@ -19,8 +21,10 @@
           <td><%= order.order_id %></td>
           <td><%= fmt_date(order.date) %></td>
           <td><%= link_to_client(order.client) %></td>
+          <td><%= order.invoice_number || "—" %></td>
           <td><%= order.items.size %></td>
           <td class="num"><%= money(order.total_amount_after_discount) %></td>
+          <td><a class="button" href="/orders/<%= order.id %>/invoice" style="font-size:0.8em;padding:0.3rem 0.6rem;">Download</a></td>
         </tr>
       <% end %>
     </tbody>

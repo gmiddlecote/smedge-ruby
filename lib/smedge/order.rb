@@ -45,6 +45,12 @@ module Smedge
     sig { returns(Money) }
     attr_accessor :discount
 
+    sig { returns(T.nilable(String)) }
+    attr_accessor :invoice_number
+
+    sig { returns(Integer) }
+    attr_accessor :tax_amount_paise
+
     # date is a "dd-mm-yyyy" string; discount is an amount in paise.
     sig { params(date: String, client: Client, discount: Integer).void }
     def initialize(date, client, discount = 0)
@@ -53,6 +59,8 @@ module Smedge
       @discount = Utils::CurrencyFormatter.new_money(discount)
       @items = T.let([], T::Array[OrderItem])
       @income = T.let([], T::Array[Income])
+      @invoice_number = nil
+      @tax_amount_paise = 0
       generate_order_id
       @status_flags = {
         awaiting_design: false,

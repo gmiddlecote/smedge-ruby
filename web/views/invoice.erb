@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Invoice <%= @order.invoice_number || @order.order_id %></title>
+<style>body{font-family:system-ui,sans-serif;max-width:720px;margin:2rem auto;padding:0 1.5rem;color:#1f2430}h1{font-size:1.4rem;border-bottom:2px solid #2563eb;padding-bottom:.5rem}table{width:100%;border-collapse:collapse}th,td{padding:.5rem .3rem;border-bottom:1px solid #e2e6ec;text-align:left}th{background:#f4f6f9;font-weight:600}td.num{text-align:right}header{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:1rem}</style></head>
+<body>
+<header>
+  <div><strong>Smedge</strong><br><small>Invoice</small></div>
+  <div style="text-align:right"><strong><%= @order.invoice_number || @order.order_id %></strong><br><%= fmt_date(@order.date) %></div>
+</header>
+
+<p><strong>To:</strong> <%= h(@client.name) %><br>
+<% if @client.gstin %>GSTIN: <%= h(@client.gstin) %><br><% end %>
+<% if @client.state %>State: <%= h(@client.state) %><br><% end %>
+</p>
+
+<table>
+<thead><tr><th>Description</th><th>Qty</th><th>Rate</th><th>HSN</th><th>Total</th></tr></thead>
+<tbody>
+<% @order.items.each do |item| %>
+<tr>
+  <td><%= h(item.item) %></td>
+  <td><%= item.quantity %></td>
+  <td><%= money(item.rate) %></td>
+  <td><%= h(item.hsn_code || "—") %></td>
+  <td class="num"><%= money(item.total) %></td>
+</tr>
+<% end %>
+</tbody>
+<tfoot>
+  <tr><td colspan="4">Net Total</td><td class="num"><%= money(@order.total_amount_after_discount) %></td></tr>
+  <% if @order.tax_amount_paise && @order.tax_amount_paise > 0 %>
+  <tr><td colspan="4">Tax</td><td class="num"><%= money(Smedge::Utils::CurrencyFormatter.new_money(@order.tax_amount_paise)) %></td></tr>
+  <% end %>
+</tfoot>
+</table>
+
+<p style="margin-top:1.5rem;font-size:.85rem;color:#6b7280">This invoice is for goods/services under GST. Registered clients must report this for GSTR-1 filing.</p>
+</body></html>

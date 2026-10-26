@@ -2,6 +2,7 @@
 <h1>Record Payment</h1>
 
 <form method="post" action="/payments" class="form">
+  <input type="hidden" name="authenticity_token" value="<%= session[:csrf] || '' %>">
   <div class="field">
     <label for="client">Customer *</label>
     <input type="text" id="client" name="client" list="clients" value="<%= h(@form && @form["client"] ? @form["client"] : @client_name) %>" required autofocus>

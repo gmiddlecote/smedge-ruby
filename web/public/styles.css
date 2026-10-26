@@ -230,3 +230,43 @@ button.remove-row {
 
 #add-item { background: #eef1f6; color: var(--ink); }
 #add-item:hover { background: #dfe4ec; }
+
+/* Consolidated utility classes (previously inline/style blocks) */
+.search-bar {
+  padding: 8px;
+  width: 300px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+.section-margin { margin-bottom: 20px; }
+.section-gap { margin: 20px 0; }
+.back-link { font-size: 0.5em; text-decoration: none; }
+.badge {
+  font-size: 0.7em;
+  padding: 2px 4px;
+  border-radius: 4px;
+  margin-left: 5px;
+}
+.badge-due { background: #fee2e2; color: #b91c1c; }
+.badge-paid { background: #dcfce7; color: #15803d; }
+.small-text { font-size: 0.9em; }
+.flex-head { display: flex; align-items: center; gap: 10px; }
+.row-clickable { cursor: pointer; }
+
+.error-container {
+  display: flex; justify-content: center; align-items: center;
+  min-height: 60vh; padding: 1rem;
+}
+.error-card {
+  background: white; border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1); padding: 2rem;
+  max-width: 480px; text-align: center;
+}
+.error-icon { font-size: 3rem; margin-bottom: 1rem; }
+.error-message { color: #dc2626; font-size: 1.1rem; margin-bottom: 1.5rem; line-height: 1.5; }
+.error-actions { display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap; }
+.btn { display: inline-block; padding: 0.625rem 1.25rem; border-radius: 6px; text-decoration: none; font-weight: 500; font-size: 0.875rem; transition: all 0.2s; }
+.btn-primary { background: #2563eb; color: white; }
+.btn-primary:hover { background: #1d4ed8; }
+.btn-secondary { background: #e5e7eb; color: #374151; }
+.btn-secondary:hover { background: #d1d5db; }

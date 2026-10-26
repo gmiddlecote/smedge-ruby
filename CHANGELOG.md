@@ -2,7 +2,7 @@
 
 ### Added
 - SQLite persistence via Sequel; the database is built and read at runtime with `rake db:seed` / `rake db:reset` for seeding from `orders.yaml`
-- Payment recording: `--add-payment` CLI flag and a web payment form; payments link to orders via an order reference or credit the client's account
+- Payment recording: web payment form; payments link to orders via an order reference or credit the client's account
 - Client credit: available credit and debits per customer, with credit automatically applied to order balances (`apply_client_credit`)
 - Sinatra web interface: dashboard, customers, orders, sales and payment forms (`rackup config.ru` on port 9292 or `ruby web/app.rb` on port 4567)
 - Monthly income/expense line chart on the dashboard (server-rendered SVG, no JavaScript dependencies)

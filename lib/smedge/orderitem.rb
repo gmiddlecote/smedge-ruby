@@ -49,12 +49,22 @@ module Smedge
       @delivery_completed = false
       @printing_logs = T.let([], T::Array[T::Hash[Symbol, T.untyped]])
       @delivery_logs = T.let([], T::Array[T::Hash[Symbol, T.untyped]])
+      @hsn_code = nil
     end
 
     sig { params(rate: Integer).void }
     def setrate(rate)
       @rate = Utils::CurrencyFormatter.new_money(rate)
     end
+
+    sig { params(hsn: T.nilable(String)).void }
+    def set_hsn(hsn)
+      @hsn_code = hsn
+    end
+
+    # HSN code for GST
+    sig { returns(T.nilable(String)) }
+    attr_accessor :hsn_code
 
     # Line subtotal: rate x quantity.
     sig { returns(Money) }

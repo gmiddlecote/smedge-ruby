@@ -108,7 +108,7 @@ module Smedge
     def find_client(id)
       row = db[:clients].where(id: id).first
       return unless row
-      Client.new(row[:name], row[:email], row[:id])
+      Client.new(row[:name], row[:email], row[:gstin], row[:state], row[:id])
     end
 
     sig { params(client_id: Integer).returns(T::Array[Order]) }
@@ -119,6 +119,8 @@ module Smedge
       db[:orders].where(client_id: client_id).order(:id).map do |row|
         order = Order.new(row[:date].strftime("%d-%m-%Y"), client, row[:discount_paise])
         order.id = row[:id]
+        order.invoice_number = row[:invoice_number]
+        order.tax_amount_paise = row[:tax_amount_paise] || 0
         db[:order_items].where(order_id: row[:id]).order(:id).each do |item_row|
           item = OrderItem.new(item_row[:description], item_row[:quantity])
           item.setrate(item_row[:rate_paise])
@@ -146,7 +148,7 @@ module Smedge
     sig { params(limit: Integer, offset: Integer).returns(T::Array[Client]) }
     def load_clients_paginated(limit:, offset:)
       db[:clients].order(:id).limit(limit).offset(offset).all.map do |row|
-        Client.new(row[:name], row[:email], row[:id])
+        Client.new(row[:name], row[:email], row[:gstin], row[:state], row[:id])
       end
     end
 
@@ -228,9 +230,12 @@ module Smedge
 
         order = Order.new(row[:date].strftime("%d-%m-%Y"), client, row[:discount_paise])
         order.id = row[:id]
+        order.invoice_number = row[:invoice_number]
+        order.tax_amount_paise = row[:tax_amount_paise] || 0
         db[:order_items].where(order_id: row[:id]).order(:id).each do |item_row|
           item = OrderItem.new(item_row[:description], item_row[:quantity])
           item.setrate(item_row[:rate_paise])
+          item.set_hsn(item_row[:hsn_code]) if item_row[:hsn_code]
           item.quantity_printed = item_row[:quantity_printed] || 0
           item.quantity_delivered = item_row[:quantity_delivered] || 0
           item.printing_completed = item_row[:printing_completed] || false
@@ -269,17 +274,17 @@ module Smedge
 
     # Look up a client by exact name, creating it if missing. Returns the
     # client and whether it was newly created.
-    sig { params(name: String, email: T.nilable(String)).returns([Client, T::Boolean]) }
-    def find_or_create_client(name, email = nil)
+    sig { params(name: String, email: T.nilable(String), gstin: T.nilable(String), state: T.nilable(String)).returns([Client, T::Boolean]) }
+    def find_or_create_client(name, email = nil, gstin = nil, state = nil)
       existing = db[:clients].where(name: name).first
       if existing
         new_email = email || existing[:email]
-        db[:clients].where(id: existing[:id]).update(email: new_email) if new_email != existing[:email]
-        return [Client.new(name, new_email, existing[:id]), false]
+        db[:clients].where(id: existing[:id]).update(email: new_email, gstin: gstin || existing[:gstin], state: state || existing[:state]) if (new_email != existing[:email] || (gstin && gstin != existing[:gstin]) || (state && state != existing[:state]))
+        return [Client.new(name, new_email, gstin || existing[:gstin], state || existing[:state], existing[:id]), false]
       end
 
-      id = db[:clients].insert(name: name, email: email)
-      [Client.new(name, email, id), true]
+      id = db[:clients].insert(name: name, email: email, gstin: gstin, state: state)
+      [Client.new(name, email, gstin, state, id), true]
     end
 
     sig do

@@ -18,17 +18,30 @@ module Smedge
     sig { returns(T.nilable(String)) }
     attr_accessor :email
 
+    sig { returns(T.nilable(String)) }
+    attr_accessor :gstin
+
+    sig { returns(T.nilable(String)) }
+    attr_accessor :state
+
+    sig { returns(T::Boolean) }
+    def registered?
+      gstin && !gstin.strip.empty?
+    end
+
     sig { returns(T::Array[Income]) }
     attr_reader :credits
 
     sig { returns(T::Array[Expense]) }
     attr_reader :debits
 
-    sig { params(name: String, email: T.nilable(String), id: T.nilable(Integer)).void }
-    def initialize(name, email = nil, id = nil)
+    sig { params(name: String, email: T.nilable(String), gstin: T.nilable(String), state: T.nilable(String), id: T.nilable(Integer)).void }
+    def initialize(name, email = nil, gstin = nil, state = nil, id = nil)
       @id = id
       @name = name
       @email = email
+      @gstin = gstin
+      @state = state
       @credits = T.let([], T::Array[Income])
       @debits = T.let([], T::Array[Expense])
     end

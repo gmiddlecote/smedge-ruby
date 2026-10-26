@@ -3,6 +3,7 @@
 require "bundler/setup"
 Bundler.require(:development, :web)
 require "sinatra/base"
+require "rack/protection"
 require "bigdecimal"
 require "json"
 require "securerandom"
@@ -23,6 +24,7 @@ module Smedge
       set :session_secret, ENV.fetch("SMEDGE_SECRET", SecureRandom.hex(32))
       set :host_authorization, { permitted_hosts: [] }
       set :show_exceptions, false
+      use Rack::Protection::AuthenticityToken
       enable :sessions
       # Database initialization is deferred to first request to allow tests
       # to control schema initialization via Smedge::Db.reset_schema
@@ -30,7 +32,6 @@ module Smedge
 
     # HTTP Basic Authentication - runs before each request
     before do
-      @clients, @orders = reload_all
       protected!
     end
 
@@ -52,13 +53,18 @@ module Smedge
 
     # Dashboard: summary cards, monthly line chart and recent orders.
     get "/" do
-      @recent_orders = @orders.sort_by(&:date).reverse.first(5)
+      clients, orders = reload_all
+      @orders = orders
+      @clients = clients
+      @recent_orders = orders.sort_by(&:date).reverse.first(5)
       @summary = monthly_summary
       erb :index
     end
 
     # List all customers.
     get "/clients" do
+      _, orders = reload_all
+      @orders = orders
       page = (params["page"] || 1).to_i
       per_page = 20
       offset = (page - 1) * per_page
@@ -73,6 +79,8 @@ module Smedge
 
     # Customer detail: their payments, expenses and per-order credit flow.
     get "/clients/:id" do
+      _, orders = reload_all
+      @orders = orders
       @client = Smedge::Db.find_client(params["id"].to_i)
       halt 404, "Client not found" unless @client
       halt 404, "Client has no id in database" unless @client.id
@@ -114,9 +122,18 @@ module Smedge
       erb :order_detail
     end
 
+    get "/orders/:id/invoice" do
+      @order = Smedge::Db.find_order(params["id"].to_i)
+      halt 404, "Order not found" unless @order
+      @client = @order.client
+      content_type "text/html"
+      erb :invoice
+    end
+
     # List all orders, newest first.
     get "/orders" do
-      @orders = @orders.sort_by(&:date).reverse
+      _, orders = reload_all
+      @orders = orders.sort_by(&:date).reverse
       erb :orders
     end
 
@@ -141,6 +158,8 @@ module Smedge
     end
 
     get "/sales/new" do
+      _, _ = reload_all
+      @clients = Smedge::Db.load_clients
       erb :sales_new
     end
 
@@ -160,11 +179,74 @@ module Smedge
       discount = params["discount"].to_s.strip
       discount_paise = discount.empty? ? 0 : rupees_to_paise(discount)
 
-      client, = Smedge::Db.find_or_create_client(client_name)
-      order = Smedge::Db.create_order(date: date, client: client, discount: discount_paise, items: items)
+      gstin = params["gstin"].to_s.strip
+      state = params["state"].to_s.strip
+      client, created = Smedge::Db.find_or_create_client(client_name, nil, gstin.empty? ? nil : gstin, state.empty? ? nil : state)
+      invoice_number = params["invoice_number"].to_s.strip
+      tax_rate = params["tax_rate"].to_f
+      # Apply per-item HSN from items input if present
+      items_hash = {}
+      if Array(params["item"]).is_a?(Hash) && params["item"].is_a?(Array)
+        params["item"].each_with_index do |sub, i|
+          desc = (sub["description"] || "").to_s
+          qty = (sub["quantity"] || "").to_i
+          rate = CreditService.rupees_to_paise((sub["rate"] || "0").to_s)
+          hsn = (sub["hsn"] || "").to_s
+          next unless desc.empty? && qty > 0
+          items_hash[i] = { description: desc, quantity: qty, rate: rate, hsn: hsn }
+        end
+      else
+        items.each_with_index do |it, i|
+          items_hash[i] = it[:description].to_s.empty? ? nil : it
+        end
+      end
+      valid_items = items_hash.compact.values
+      raise Smedge::Error, "Add at least one item" if valid_items.empty?
+      # Build order with HSN + tax on line items
+      order = Smedge::Order.new(date, client, discount_paise)
+      valid_items.each do |it|
+        oi = Smedge::OrderItem.new(it[:description], it[:quantity])
+        oi.setrate(it[:rate])
+        oi.set_hsn(it[:hsn])
+        order.add_item(oi)
+      end
+      invoice_number ||= nil
+      tax_amount_paise = if gstin.strip.empty? || tax_rate <= 0
+        0
+      else
+        tax_service_compute = Smedge::TaxService.send(:calculate_split, client_state: client.state, business_state: "", rate_percent: tax_rate)
+        order_amount_paise = order.total_amount_after_discount.cents
+        Smedge::TaxService.tax_amounts(amount_paise: order_amount_paise, rate_percent: tax_rate, split: tax_service_compute).first
+      end
+      order.invoice_number = invoice_number
+      order.tax_amount_paise = tax_amount_paise
+      db_result = db.transaction do
+        order_row = Smedge::Db.db.transact do
+          order_id = Smedge::Db.db[:orders].insert(
+            client_id: client.id,
+            date: Date.parse(date),
+            discount_paise: order.discount.cents,
+            order_id: order.order_id,
+            invoice_number: invoice_number,
+            tax_amount_paise: tax_amount_paise
+          )
+          order.id = order_row
+          valid_items.each do |it|
+            Smedge::Db.db[:order_items].insert(
+              order_id: order_row,
+              description: it[:description],
+              quantity: it[:quantity],
+              rate_paise: it[:rate],
+              hsn_code: it[:hsn]
+            )
+          end
+          order
+        end
+        order_row
+      end
       session[:notice] = "Sale #{order.order_id} added for #{client.name}"
       redirect "/clients/#{client.id}"
-    rescue Smedge::Error, ArgumentError => e
+    rescue Smedge::Error, ArgumentError, Sequel::DatabaseError => e
       @error = e.message
       @form = params
       erb :sales_new
@@ -172,6 +254,9 @@ module Smedge
 
 
     get "/payments/new" do
+      _, orders = reload_all
+      @orders = orders
+      @clients = Smedge::Db.load_clients
       @client_name = params["client"]
       erb :payments_new
     end
@@ -205,7 +290,7 @@ module Smedge
       message += " against order ##{order_id}" if order_id
       session[:notice] = message
       redirect "/clients/#{client.id}"
-    rescue Smedge::Error, ArgumentError => e
+    rescue Smedge::Error, ArgumentError, Sequel::DatabaseError => e
       @error = e.message
       @form = params
       erb :payments_new
@@ -246,7 +331,9 @@ module Smedge
 
     # Client summary: identity plus current credit and debit totals.
     get "/api/clients/:id" do
-      client = @clients.find { |c| c.id == params["id"].to_i }
+      clients, _ = reload_all
+      @clients = clients
+      client = clients.find { |c| c.id == params["id"].to_i }
       halt 404 unless client
 
       json_response(client_payload(client))
@@ -254,7 +341,10 @@ module Smedge
 
     # Client's order history (newest first) with running balance info.
     get "/api/clients/:id/orders" do
-      client = @clients.find { |c| c.id == params["id"].to_i }
+      clients, orders = reload_all
+      @clients = clients
+      @orders = orders
+      client = clients.find { |c| c.id == params["id"].to_i }
       halt 404 unless client
 
       orders = @orders.select { |order| order.client.id == client.id }
@@ -265,7 +355,10 @@ module Smedge
 
     # Client's payment statement: every income and expense, newest first.
     get "/api/clients/:id/payments" do
-      client = @clients.find { |c| c.id == params["id"].to_i }
+      clients, orders = reload_all
+      @clients = clients
+      @orders = orders
+      client = clients.find { |c| c.id == params["id"].to_i }
       halt 404 unless client
 
       payments = (client.credits.map { |payment| payment_payload(payment).merge(type: "income") } +
@@ -277,7 +370,9 @@ module Smedge
 
     # Full order detail: line items, totals, status flags and linked payments.
     get "/api/orders/:id" do
-      order = @orders.find { |o| o.id == params["id"].to_i }
+      _, orders = reload_all
+      @orders = orders
+      order = orders.find { |o| o.id == params["id"].to_i }
       halt 404 unless order
 
       json_response(order_payload(order))
@@ -295,10 +390,9 @@ module Smedge
     # Handle Smedge::Error - validation and business logic errors
     error Smedge::Error do
       log_error(env["sinatra.error"])
-      @error = env["sinatra.error"].message
       status 400
       if request.xhr? || request.accept.include?("application/json")
-        { error: @error }.to_json
+        { error: "Invalid input. Please review and try again." }.to_json
       else
         erb :error
       end
