@@ -1,10 +1,10 @@
 <%# Customer page: summary cards, payment/expense tables and credit flow. %>
 <% balance = @client.available_credit - @client.total_debits %>
 
-<h1><%= h(@client.name) %> <a class="muted" style="font-size: 0.5em; text-decoration: none;" href="/clients">← Back to Clients</a></h1>
+<h1><%= h(@client.name) %> <a class="muted back-link" href="/clients">← Back to Clients</a></h1>
 <% if @client.email %><p class="muted"><%= h(@client.email) %></p><% end %>
 
-<div style="margin-bottom: 20px;">
+<div class="section-margin">
   <a class="button" href="/clients/<%= @client.id %>/export">Download Statement (CSV)</a>
 </div>
 
@@ -28,7 +28,7 @@
   </div>
 </div>
 
-<div style="margin: 20px 0;">
+<div class="section-gap">
   <a class="button" href="<%= record_payment_href(@client) %>">Record payment for <%= h(@client.name) %></a>
 </div>
 
@@ -93,20 +93,20 @@
     </thead>
     <tbody>
       <% @credit_flow.each do |entry| %>
-        <tr style="cursor: pointer;" onclick="window.location='/orders/<%= entry[:order].id %>'">
+        <tr class="row-clickable" onclick="window.location='/orders/<%= entry[:order].id %>'">
           <td><%= entry[:order].order_id %></td>
           <td><%= fmt_date(entry[:order].date) %></td>
           <td class="num"><%= money(entry[:order].total_amount_after_discount) %></td>
           <td class="num <%= "negative" if entry[:balance_due].positive? %>">
             <%= money(entry[:balance_due]) %>
             <% if entry[:balance_due].positive? %>
-              <span style="font-size: 0.7em; padding: 2px 4px; background: #fee2e2; color: #b91c1c; border-radius: 4px; margin-left: 5px;">Due</span>
+              <span class="badge badge-due">Due</span>
             <% else %>
-              <span style="font-size: 0.7em; padding: 2px 4px; background: #dcfce7; color: #15803d; border-radius: 4px; margin-left: 5px;">Paid</span>
+              <span class="badge badge-paid">Paid</span>
             <% end %>
           </td>
 
-          <td class="muted" style="font-size: 0.9em;">
+          <td class="muted small-text">
             <%= money(entry[:credit_before]) %> → <%= money(entry[:credit_after]) %>
           </td>
         </tr>

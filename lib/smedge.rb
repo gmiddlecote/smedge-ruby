@@ -4,9 +4,9 @@
 # smedge.rb — entry point for the Smedge library (accounting, orders, reports).
 
 # Load Sorbet runtime types and every domain model below so that
-# `require "smedge"` is everything a caller needs. Entry points (main.rb,
-# web/app.rb and files run through bundle exec) are responsible for their own
-# Bundler setup, so this library file never calls `require "bundler/setup"`.
+# `require "smedge"` is everything a caller needs. The web app (web/app.rb)
+# is responsible for its own Bundler setup; this library file never calls
+# `require "bundler/setup"`.
 require "sorbet-runtime"
 
 require_relative "smedge/version"
@@ -18,7 +18,6 @@ require_relative "smedge/expense"
 require_relative "smedge/income"
 require_relative "smedge/utils/currency_formatter"
 require_relative "smedge/utils/date_parse"
-require_relative "smedge/utils/display_helper"
 require_relative "smedge/utils/db"
 require_relative "smedge/services"
 
@@ -44,6 +43,6 @@ Money.default_formatting_rules = {
 # Namespace for all Smedge domain objects.
 module Smedge
   # Base error raised for invalid input and model violations; rescued by the
-  # CLI and web layers so they can present a friendly message.
+  # web layer so it can present a friendly message.
   class Error < StandardError; end
 end

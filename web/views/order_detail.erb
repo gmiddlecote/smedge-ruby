@@ -1,5 +1,5 @@
 <%# Order Detail Page: itemized view and associated payments. %>
-<h1 style="display: flex; align-items: center; gap: 10px;">
+<h1 class="flex-head">
   Order <%= @order.order_id %>
   <a class="muted" style="font-size: 0.5em; text-decoration: none;" href="/clients/<%= @order.client.id %>">← Back to Client</a>
   <div style="margin-left: auto; display: flex; gap: 8px;">

@@ -1,9 +1,18 @@
 <h1>Add Customer</h1>
 
 <form method="post" action="/customers" class="form">
+  <input type="hidden" name="authenticity_token" value="<%= session[:csrf] || '' %>">
   <div class="field">
     <label for="name">Customer name *</label>
     <input type="text" id="name" name="name" value="<%= h(@name) %>" required autofocus>
+  </div>
+  <div class="field">
+    <label for="gstin">GSTIN</label>
+    <input type="text" id="gstin" name="gstin" value="<%= h(@form && @form["gstin"]) %>">
+  </div>
+  <div class="field">
+    <label for="state">State</label>
+    <input type="text" id="state" name="state" value="<%= h(@form && @form["state"]) %>">
   </div>
   <div class="field">
     <label for="email">Email</label>

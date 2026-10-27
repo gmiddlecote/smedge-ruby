@@ -57,6 +57,8 @@ module Smedge
       @discount = Utils::CurrencyFormatter.new_money(discount)
       @items = T.let([], T::Array[OrderItem])
       @income = T.let([], T::Array[Income])
+      @invoice_number = nil
+      @tax_amount_paise = 0
       generate_order_id
       @status_flags = {
         awaiting_design: false,

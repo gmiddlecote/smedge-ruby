@@ -88,6 +88,15 @@ module Smedge
       calculate_gst
     end
 
+    sig { params(hsn: T.nilable(String)).void }
+    def set_hsn(hsn)
+      @hsn_code = hsn
+    end
+
+    # HSN code for GST
+    sig { returns(T.nilable(String)) }
+    attr_accessor :hsn_code
+
     # Line subtotal: rate x quantity.
     sig { returns(Money) }
     def total

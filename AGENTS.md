@@ -4,7 +4,7 @@ This document helps AI agents understand the Smedge codebase for development tas
 
 ## Project Overview
 
-**Smedge** is a Ruby-based accounting/invoicing application for managing clients, orders, payments, and expenses. It has both a CLI (`main.rb`) and a web interface (`web/app.rb` - Sinatra).
+**Smedge** is a Ruby-based accounting/invoicing web application for managing clients, orders, payments, and expenses (`web/app.rb` - Sinatra).
 
 ### Key Features
 - Client management (customers, credit tracking)
@@ -20,7 +20,6 @@ This document helps AI agents understand the Smedge codebase for development tas
 ## Architecture
 
 ```
-main.rb                    # CLI entry point
 lib/smedge.rb              # Main library entry, loads all domain objects
 lib/smedge/
   ├── client.rb            # Customer with credits/debits
@@ -37,7 +36,6 @@ lib/smedge/
   └── utils/
        ├── currency_formatter.rb  # Indian-style ₹ formatting
        ├── date_parse.rb          # dd-mm-yyyy parsing
-       ├── display_helper.rb      # CLI pretty printing
        └── db.rb                  # SQLite persistence (Sequel ORM)
 web/
   ├── app.rb               # Sinatra web app
@@ -75,7 +73,6 @@ db/
 | Credit logic | `lib/smedge/services/credit_service.rb` |
 | Order lifecycle | `lib/smedge/services/order_service.rb` |
 | Payment processing | `lib/smedge/services/payment_service.rb` |
-| CLI commands | `main.rb` |
 | Web routes | `web/app.rb` |
 | Web UI | `web/views/*.erb` |
 | Receipt/invoice PDFs | `lib/smedge/pdf_generator.rb`, `web/fonts/` |
@@ -90,12 +87,6 @@ bundle exec rspec
 # Lint
 bundle exec rubocop
 bundle exec rubocop -A  # Auto-correct
-
-# Run CLI
-ruby main.rb                    # Full report
-ruby main.rb --add-client "Name" --email "email@example.com"
-ruby main.rb --add-sale "Client" --item "Item;Qty;RatePaise" --discount 5000
-ruby main.rb --add-payment "Client" --amount 100000 --mode bank
 
 # Run web app (with auth)
 SMEDGE_AUTH_USERNAME=admin SMEDGE_AUTH_PASSWORD=changeme ruby web/app.rb
@@ -181,7 +172,7 @@ Run migrations manually: `Sequel::Migrator.run(db, "db/migrate")`
 ## Migrations + FK Enforcement
 
 - `PRAGMA foreign_keys = ON` enabled on every connection
-- Migrations run automatically via `Smedge::Db.init_db` (called at boot by CLI/web)
+- Migrations run automatically via `Smedge::Db.init_db` (called at web boot)
 - `schema_migrations` table tracks applied versions
 - `reset_schema` drops all tables in FK-safe order and re-runs migrations
 

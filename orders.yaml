@@ -1,6 +1,8 @@
 clients:
   - name: Ron
     email: ron@example.com
+    gstin: "29ABCDE1234F1Z5"
+    state: "Maharashtra"
     contact_number: 9922112233
   - name: Abhijeet Bhatia
   - name: Ryan
