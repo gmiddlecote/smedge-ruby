@@ -122,7 +122,7 @@ module Smedge
     def find_client(id)
       row = db[:clients].where(id: id).first
       return unless row
-      Client.new(row[:name], row[:email], row[:gstin], row[:state], row[:id])
+      Client.new(row[:name], row[:email], row[:id], gstin: row[:gstin], state: row[:state], address: row[:address], city: row[:city], pincode: row[:pincode])
     end
 
     sig { params(client_id: Integer).returns(T::Array[Order]) }
@@ -162,7 +162,7 @@ module Smedge
     sig { params(limit: Integer, offset: Integer).returns(T::Array[Client]) }
     def load_clients_paginated(limit:, offset:)
       db[:clients].order(:id).limit(limit).offset(offset).all.map do |row|
-        Client.new(row[:name], row[:email], row[:gstin], row[:state], row[:id])
+        Client.new(row[:name], row[:email], row[:id], gstin: row[:gstin], state: row[:state], address: row[:address], city: row[:city], pincode: row[:pincode])
       end
     end
 
@@ -321,11 +321,11 @@ module Smedge
       if existing
         new_email = email || existing[:email]
         db[:clients].where(id: existing[:id]).update(email: new_email, gstin: gstin || existing[:gstin], state: state || existing[:state]) if (new_email != existing[:email] || (gstin && gstin != existing[:gstin]) || (state && state != existing[:state]))
-        return [Client.new(name, new_email, gstin || existing[:gstin], state || existing[:state], existing[:id]), false]
+        return [Client.new(name, new_email, existing[:id], gstin: gstin || existing[:gstin], state: state || existing[:state], address: existing[:address], city: existing[:city], pincode: existing[:pincode]), false]
       end
 
       id = db[:clients].insert(name: name, email: email, gstin: gstin, state: state)
-      [Client.new(name, email, gstin, state, id), true]
+      [Client.new(name, email, id, gstin: gstin, state: state, address: nil, city: nil, pincode: nil), true]
     end
 
     sig do
