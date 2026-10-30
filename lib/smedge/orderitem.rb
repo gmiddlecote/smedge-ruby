@@ -8,6 +8,9 @@ module Smedge
   class OrderItem
     extend T::Sig
 
+    # Database row id (not the @item description).
+    attr_accessor :id
+
     sig { returns(String) }
     attr_accessor :item
 
@@ -62,6 +65,7 @@ module Smedge
 
     sig { params(item: String, quantity: Integer).void }
     def initialize(item, quantity)
+      @id = nil
       @item = item
       @quantity = quantity
       @rate = T.let(Smedge::Utils::CurrencyFormatter.new_money(0), Money)

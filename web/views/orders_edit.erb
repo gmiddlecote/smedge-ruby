@@ -1,0 +1,70 @@
+<h1>Edit Sale <%= @order.order_id %></h1>
+<form method="post" action="/orders/<%= @order.id %>" class="form" id="sale-form">
+  <input type="hidden" name="authenticity_token" value="<%= session[:csrf] || '' %>">
+  <div class="field">
+    <label for="client">Customer *</label>
+    <input type="text" id="client" name="client" list="clients" value="<%= h(@form ? @form["client"] : @order.client.name) %>" required autofocus>
+    <datalist id="clients">
+      <% @clients.each do |client| %>
+        <option value="<%= h(client.name) %>"></option>
+      <% end %>
+    </datalist>
+  </div>
+  <div class="field">
+    <label for="date">Date *</label>
+    <input type="date" id="date" name="date" value="<%= h(@form ? @form["date"] : (@order.date ? @order.date.strftime('%Y-%m-%d') : '')) %>" required>
+  </div>
+  <div class="field">
+    <label for="discount">Discount (₹)</label>
+    <input type="text" id="discount" name="discount" inputmode="decimal" placeholder="e.g. 50.00" value="<%= h(@form ? @form["discount"] : (@order.discount ? (@order.discount.cents / 100.0).to_s : '')) %>">
+  </div>
+  <div class="field">
+    <label for="tax_rate">Tax Rate (%)</label>
+    <input type="number" step="0.1" id="tax_rate" name="tax_rate" placeholder="e.g. 18" value="<%= h(@form ? @form["tax_rate"] : '') %>">
+  </div>
+  <div class="field">
+    <label for="invoice_number">Invoice Number</label>
+    <input type="text" id="invoice_number" name="invoice_number" placeholder="Optional" value="<%= h(@form ? @form["invoice_number"] : (@order.invoice_number || '')) %>">
+  </div>
+
+  <h2>Items</h2>
+  <table class="data" id="items-table">
+    <thead><tr><th>Description *</th><th>Qty *</th><th>Rate (₹) *</th><th>Delete</th></tr></thead>
+    <tbody>
+      <% @order.items.each do |it| %>
+        <tr class="item-row" data-id="<%= it.id %>">
+          <td><input type="hidden" name="item[][id]" value="<%= it.id %>"><input type="text" name="item[][description]" value="<%= h(it.item) %>" required></td>
+          <td><input type="number" name="item[][quantity]" value="<%= it.quantity %>" min="1" required></td>
+          <td><input type="text" name="item[][rate]" value="<%= (it.rate.cents / 100.0).to_s %>" inputmode="decimal" required></td>
+          <td><input type="checkbox" name="delete_item[]" value="<%= it.id %>"></td>
+        </tr>
+      <% end %>
+      <tr class="item-row new-item">
+        <td><input type="text" name="item[][description]" placeholder="New item" required></td>
+        <td><input type="number" name="item[][quantity]" value="1" min="1" required></td>
+        <td><input type="text" name="item[][rate]" value="" inputmode="decimal" required></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <button type="button" onclick="addItemRow()">+ Add item</button>
+
+  <div class="actions">
+    <button type="submit">Update Sale</button>
+    <a class="button" href="/orders/<%= @order.id %>">Cancel</a>
+  </div>
+</form>
+<script>
+function addItemRow() {
+  var tbody = document.querySelector('#items-table tbody');
+  var row = tbody.querySelector('.new-item');
+  var clone = row.cloneNode(true);
+  clone.classList.remove('new-item');
+  var idInput = clone.querySelector('input[name="item[][id]"]');
+  if (idInput) idInput.remove();
+  clone.querySelector('input[name="item[][description]"]').value = '';
+  clone.querySelector('input[name="item[][quantity]"]').value = '1';
+  clone.querySelector('input[name="item[][rate]"]').value = '';
+  tbody.insertBefore(clone, row);
+}
+</script>

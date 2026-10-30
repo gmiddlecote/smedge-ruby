@@ -103,6 +103,121 @@ module Smedge
     end
 
     # Order detail: itemized list and associated payments.
+    get "/orders/:id/edit" do
+      @order = Smedge::Db.find_order(params["id"].to_i)
+      halt 404, "Order not found" unless @order
+      clients, _ = reload_all
+      @clients = clients
+      erb :orders_edit
+    end
+
+    # Update an order (metadata: client, date, discount, invoice, tax)
+    post "/orders/:id" do
+      db = Smedge::Db.db
+      order = Smedge::Db.find_order(params["id"].to_i)
+      halt 404, "Order not found" unless order
+
+      client_name = params["client"].to_s.strip
+      raise Smedge::Error, "Customer name is required" if client_name.empty?
+
+      date_str = params["date"].to_s.strip
+      raise Smedge::Error, "Sale date is required" if date_str.empty?
+
+      date = Date.parse(date_str).strftime("%d-%m-%Y")
+      discount = params["discount"].to_s.strip
+      discount_paise = discount.empty? ? 0 : rupees_to_paise(discount)
+      invoice_number = params["invoice_number"].to_s.strip
+      invoice_number = nil if invoice_number.empty?
+      tax_rate = params["tax_rate"].to_f
+
+      client, = Smedge::Db.find_or_create_client(client_name)
+      tax_amount_paise = if invoice_number.nil? || tax_rate <= 0
+        0
+      else
+        order_amount_paise = order.total_amount_after_discount.cents
+        split = Smedge::TaxService.send(:calculate_split, client_state: client.state, business_state: "", rate_percent: tax_rate)
+        Smedge::TaxService.tax_amounts(amount_paise: order_amount_paise, rate_percent: tax_rate, split: split).first
+      end
+
+      db[:orders].where(id: order.id).update(
+        client_id: client.id,
+        date: Date.parse(date_str),
+        discount_paise: discount_paise,
+        invoice_number: invoice_number,
+        tax_amount_paise: tax_amount_paise
+      )
+
+      # Process line items: delete checked, update existing, insert new
+      deleted_ids = Array(params["delete_item"]).map { |v| v.to_i }.reject { |v| v == 0 }
+      db[:order_items].where(order_id: order.id).where(id: deleted_ids).delete unless deleted_ids.empty?
+
+      kept_ids = []
+      items_payload = params["item"] || []
+      # Handle both array-of-hashes and hash-from-single-row forms
+      if items_payload.is_a?(Hash) && items_payload.key?("description")
+        items_payload = [items_payload]
+      end
+      Array(items_payload).each do |sub|
+        next unless sub.is_a?(Hash)
+        desc = (sub["description"] || "").to_s.strip
+        qty = (sub["quantity"] || "").to_s.strip.to_i
+        rate_str = (sub["rate"] || "").to_s
+        item_id = sub["id"].to_s.strip.to_i
+        next if desc.empty? || qty <= 0 || rate_str.strip.empty?
+        rate_paise = rupees_to_paise(rate_str)
+
+        # Recompute GST breakdown through the domain object so stored
+        # taxable_value / cgst / sgst / igst stay consistent with rate+qty.
+        item = Smedge::OrderItem.new(desc, qty)
+        item.setrate(rate_paise)
+        item.calculate_gst(
+          place_of_supply: order.place_of_supply,
+          client_state: client.state
+        )
+
+        if item_id > 0
+          db[:order_items].where(id: item_id, order_id: order.id).update(
+            description: desc,
+            quantity: qty,
+            rate_paise: rate_paise,
+            taxable_value_paise: item.taxable_value_paise,
+            cgst_paise: item.cgst_paise,
+            sgst_paise: item.sgst_paise,
+            igst_paise: item.igst_paise
+          )
+          kept_ids << item_id
+        else
+          new_id = db[:order_items].insert(
+            order_id: order.id,
+            description: desc,
+            quantity: qty,
+            rate_paise: rate_paise,
+            gst_rate_percent: item.gst_rate_percent,
+            taxable_value_paise: item.taxable_value_paise,
+            cgst_paise: item.cgst_paise,
+            sgst_paise: item.sgst_paise,
+            igst_paise: item.igst_paise
+          )
+          kept_ids << new_id
+        end
+      end
+      # Delete rows serving neither an updated nor a newly inserted item,
+      # nor flagged through the checkbox (covers browser-side row removals).
+      survivors = db[:order_items].where(order_id: order.id).select_map(:id)
+      to_delete = survivors - kept_ids - deleted_ids
+      db[:order_items].where(order_id: order.id, id: to_delete).delete unless to_delete.empty?
+
+      session[:notice] = "Order #{order.order_id} updated"
+      redirect "/orders/#{order.id}"
+    rescue Smedge::Error, ArgumentError, Sequel::DatabaseError => e
+      @error = e.message
+      @form = params
+      @order = Smedge::Db.find_order(params["id"].to_i)
+      _, clients = reload_all
+      @clients = clients
+      erb :orders_edit
+    end
+
     get "/orders/:id" do
       @order = Smedge::Db.find_order(params["id"].to_i)
       halt 404, "Order not found" unless @order
@@ -244,6 +359,7 @@ module Smedge
     # Create a sale. Dates arrive as ISO "yyyy-mm-dd" from the HTML date input
     # and are converted to the "dd-mm-yyyy" everywhere else.
     post "/sales" do
+      db = Smedge::Db.db
       client_name = params["client"].to_s.strip
       raise Smedge::Error, "Customer name is required" if client_name.empty?
 
@@ -264,13 +380,13 @@ module Smedge
       tax_rate = params["tax_rate"].to_f
       # Apply per-item HSN from items input if present
       items_hash = {}
-      if Array(params["item"]).is_a?(Hash) && params["item"].is_a?(Array)
+      if params["item"].is_a?(Array) && params["item"].first.is_a?(Hash)
         params["item"].each_with_index do |sub, i|
           desc = (sub["description"] || "").to_s
           qty = (sub["quantity"] || "").to_i
           rate = CreditService.rupees_to_paise((sub["rate"] || "0").to_s)
           hsn = (sub["hsn"] || "").to_s
-          next unless desc.empty? && qty > 0
+          next if desc.empty? || qty <= 0
           items_hash[i] = { description: desc, quantity: qty, rate: rate, hsn: hsn }
         end
       else
@@ -299,8 +415,7 @@ module Smedge
       order.invoice_number = invoice_number
       order.tax_amount_paise = tax_amount_paise
       db_result = db.transaction do
-        order_row = Smedge::Db.db.transact do
-          order_id = Smedge::Db.db[:orders].insert(
+        order_id = db[:orders].insert(
             client_id: client.id,
             date: Date.parse(date),
             discount_paise: order.discount.cents,
@@ -308,10 +423,10 @@ module Smedge
             invoice_number: invoice_number,
             tax_amount_paise: tax_amount_paise
           )
-          order.id = order_row
+          order.id = order_id
           valid_items.each do |it|
-            Smedge::Db.db[:order_items].insert(
-              order_id: order_row,
+            db[:order_items].insert(
+              order_id: order_id,
               description: it[:description],
               quantity: it[:quantity],
               rate_paise: it[:rate],
@@ -320,13 +435,13 @@ module Smedge
           end
           order
         end
-        order_row
-      end
       session[:notice] = "Sale #{order.order_id} added for #{client.name}"
       redirect "/clients/#{client.id}"
     rescue Smedge::Error, ArgumentError, Sequel::DatabaseError => e
       @error = e.message
       @form = params
+      _, clients = reload_all
+      @clients = clients
       erb :sales_new
     end
 

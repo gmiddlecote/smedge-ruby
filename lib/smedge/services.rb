@@ -5,6 +5,7 @@ require "bigdecimal"
 require_relative "services/credit_service"
 require_relative "services/order_service"
 require_relative "services/payment_service"
+require_relative "services/tax_service"
 
 module Smedge
   module Services

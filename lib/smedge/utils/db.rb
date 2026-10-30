@@ -185,6 +185,7 @@ module Smedge
       order.place_of_supply = row[:place_of_supply]
       db[:order_items].where(order_id: row[:id]).order(:id).each do |item_row|
         item = OrderItem.new(item_row[:description], item_row[:quantity])
+        item.id = item_row[:id]
         item.setrate(item_row[:rate_paise])
         item.quantity_printed = item_row[:quantity_printed] || 0
         item.quantity_delivered = item_row[:quantity_delivered] || 0

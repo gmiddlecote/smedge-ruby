@@ -21,6 +21,8 @@ create_table? :orders do
   Integer :discount_paise, null: false, default: 0
   String :order_id, null: false, unique: true
   String :place_of_supply
+  String :invoice_number
+  Integer :tax_amount_paise, default: 0
   DateTime :created_at, default: Sequel::CURRENT_TIMESTAMP
   DateTime :updated_at, default: Sequel::CURRENT_TIMESTAMP
 end

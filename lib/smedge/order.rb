@@ -45,6 +45,12 @@ module Smedge
     sig { returns(Money) }
     attr_accessor :discount
 
+    sig { returns(T.nilable(String)) }
+    attr_accessor :invoice_number
+
+    sig { returns(Integer) }
+    attr_accessor :tax_amount_paise
+
     # GST fields
     sig { returns(T.nilable(String)) }
     attr_accessor :place_of_supply

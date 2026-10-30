@@ -3,6 +3,7 @@
   Order <%= @order.order_id %>
   <a class="muted" style="font-size: 0.5em; text-decoration: none;" href="/clients/<%= @order.client.id %>">← Back to Client</a>
   <div style="margin-left: auto; display: flex; gap: 8px;">
+    <a class="button small" href="/orders/<%= @order.id %>/edit">Edit</a>
     <a class="button small" href="/orders/<%= @order.id %>/receipt" target="_blank">Download Receipt</a>
     <% if @payments.empty? %>
       <a class="button small" href="/orders/<%= @order.id %>/invoice" target="_blank">Download Invoice</a>
